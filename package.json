@@ -1,0 +1,19 @@
+{
+  "name": "medsup",
+  "version": "0.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "apps/backend",
+    "apps/pwa"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present && node --test tests/*.test.mjs",
+    "lint": "npm run lint --workspaces --if-present && node --check scripts/*.mjs tests/*.mjs",
+    "static-check": "node scripts/check-foundation.mjs",
+    "validate:node": "npm run build && npm test && npm run lint && npm run static-check"
+  }
+}

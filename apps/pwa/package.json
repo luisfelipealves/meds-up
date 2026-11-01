@@ -1,0 +1,12 @@
+{
+  "name": "@medsup/pwa",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ../../scripts/build-node-surface.mjs pwa",
+    "test": "node --test test/*.test.mjs",
+    "lint": "node --check src/*.mjs test/*.mjs",
+    "static-check": "node --test test/architecture.test.mjs"
+  }
+}
