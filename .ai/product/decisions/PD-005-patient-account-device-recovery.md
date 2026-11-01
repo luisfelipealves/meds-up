@@ -2,7 +2,7 @@
 id: PD-005
 type: product-decision
 title: Recuperação de conta e dispositivo do paciente
-status: READY_FOR_HUMAN_REVIEW
+status: APPROVED_FOR_DEVELOPMENT
 source:
   - PD-001
   - PQ-004
