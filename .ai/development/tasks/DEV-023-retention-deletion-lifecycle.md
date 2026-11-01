@@ -1,36 +1,55 @@
 ---
 id: DEV-023
 type: development
-title: Implement retention and deletion lifecycle
+title: Implement retention, export, and deletion lifecycle
 status: BLOCKED
-source: [PD-001]
+source: [PD-001, PD-005, PD-006, PD-007]
 depends_on: [DEV-002, DEV-005, DEV-022]
 parallel_class: SERIAL
-blocked_by: PA-006
+blocked_by: [DEV-002, DEV-005, DEV-022, PD-007_APPROVAL]
 assigned_agent: null
 branch: null
 worktree: null
 ---
 
 # Objective
-Implement approved retention, deletion, legal-hold, and backup lifecycle behavior for server-side data.
+Implement the approved five-year retention lifecycle, patient data export,
+account/data deletion, restricted exception retention, and backup safeguards
+for server-side data.
 
-# Product Ambiguity
-PA-006 is unresolved: retention periods and deletion/legal-hold rules for documents, versions, audit, inactive accounts, and backups are undefined.
+# Product Decision
+PD-007 sets a five-year normal retention period for pilot data in Portugal and
+requires authenticated export and deletion operations. Clinical responsibility
+of an issuing doctor does not remove the platform's data-protection duties.
 
 # Scope
-After resolution: lifecycle policies, deletion workflows, backup expiry, audit preservation, data-subject operation hooks, and verification evidence.
+- Classify server-side data and record retention anchors.
+- Build authenticated, auditable export requests and generation.
+- Build recent-authenticated deletion requests, account/session/token
+  revocation, deletion/anonymisation lifecycle, and status reporting.
+- Build restricted, reviewed retention exceptions and deletion tombstones.
+- Define encrypted backup expiry and restore behavior that honours tombstones.
+- Add no-clinical-content controls to operational logs and metrics.
 
 # Out of Scope
-Deleting device-local reminder history remotely or inventing legal retention periods.
+- Remote deletion guarantees for offline device-local data.
+- Retention rules for a physician's systems outside MedsUp.
+- Replacing legal or DPO review with application code.
 
 # Acceptance Criteria
-- Each server-side data class follows an approved lifecycle.
-- Deletion and legal hold are auditable and authorization-controlled.
-- Backup behavior and residual-data windows are documented and testable.
+- Eligible patient data can be exported without third-party or security-secret
+  disclosure.
+- Confirmed deletion blocks account access, sessions, tokens and future sync.
+- Each data class follows the approved five-year lifecycle unless an auditable,
+  restricted exception applies.
+- Expired data is deleted or anonymised by a verifiable process.
+- Backup restoration cannot recreate completed deletions.
+- Logs and metrics exclude clinical content.
 
 # Validation
-Lifecycle, authorization, legal-hold, backup-expiry, audit-integrity, and data-subject workflow tests.
+Authorization, data-isolation, export completeness, deletion state-transition,
+session/token invalidation, lifecycle expiry, exception-review, backup-restore,
+audit-integrity, and log-redaction tests.
 
 # Dependencies
-DEV-002, DEV-005, DEV-022, and an approved resolution of PA-006.
+DEV-002, DEV-005, DEV-022, and an approved PD-007.
