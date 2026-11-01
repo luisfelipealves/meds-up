@@ -3,7 +3,7 @@ id: DEV-014
 type: development
 title: Schedule resilient Android notifications
 status: PLANNED
-source: [PD-001]
+source: [PD-001, PD-003]
 depends_on: [DEV-012, DEV-013]
 parallel_class: PARALLEL_CONDITIONAL
 parallel_notes:

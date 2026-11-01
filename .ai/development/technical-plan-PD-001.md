@@ -5,13 +5,20 @@ title: MedsUp MVP — technical delivery plan
 status: PLANNED
 source:
   - PD-001
+  - PD-002
+  - PD-003
+  - PD-004
+  - PD-005
+  - PD-006
+  - PD-007
+  - PD-008
 created_at: 2026-11-01T19:07:37Z
-updated_at: 2026-11-01T19:07:37Z
+updated_at: 2026-11-01T20:00:37Z
 ---
 
 # Objective
 
-Define the technical delivery plan for PD-001 without selecting product behavior that the approved decision leaves open. This plan creates no implementation authorization beyond the already approved product scope; every executable DEV task remains `PLANNED`, except tasks directly blocked by unresolved product behavior, which are `BLOCKED`.
+Define the technical delivery plan for PD-001 as refined by PD-002 through PD-008. This plan creates no implementation authorization beyond the approved product scope; every executable DEV task remains `PLANNED` until its technical dependencies are satisfied.
 
 # Intake and repository state
 
@@ -23,7 +30,7 @@ Define the technical delivery plan for PD-001 without selecting product behavior
 # Proposed architecture boundaries
 
 1. Backend-independent API and domain layer for identity, prescriptions, versions, claims, schedules, synchronization, and audit.
-2. Replaceable adapters for authentication, object storage, OCR/AI, notification delivery, encryption/key management, and persistence.
+2. Replaceable adapters for authentication, ephemeral document transport, OCR/AI, notification delivery, encryption/key management, and persistence. No object-storage path exists for source documents or OCR output.
 3. Doctor PWA for document import, extraction review, explicit confirmation, claim QR management, versioning, suspension, and cancellation.
 4. Android client as the patient authority for agenda management and private reminder-response history.
 5. Wear OS extension for reminder presentation and actions, with the phone remaining the management authority.
@@ -35,7 +42,7 @@ Define the technical delivery plan for PD-001 without selecting product behavior
 Keep these concepts distinct:
 
 - doctor invitation, doctor identity, patient identity, session, and device;
-- source document, extraction proposal, confirmed prescription, and prescription version;
+- ephemeral source-document input, session-only extraction proposal, confirmed prescription, and prescription version; only confirmed prescriptions and versions are persistent domain records;
 - prescription ownership and patient-prescription association;
 - claim token and claim attempt;
 - clinical schedule constraints, proposed reminder schedule, and patient-confirmed schedule;
@@ -54,6 +61,9 @@ The backend must never receive the MVP reminder-response history (`SEM_CONFIRMAC
 
 # Persistence and concurrency direction
 
+- Source documents, images, PDFs, scans, raw OCR/AI responses, and unconfirmed extraction proposals must never be written to a database, object store, backup, durable queue, shared cache, browser persistence, logs, analytics, or traces.
+- A source document and its untrusted structured proposal exist only within the active doctor-review session. Completion, failure, timeout, abandonment, logout, or reload discards them; resumption requires a new upload.
+- The document is discarded when the OCR/AI request completes, fails, or expires. Confirmation persists only the corrected and explicitly confirmed structured prescription.
 - Use transactional storage for claim issuance/consumption, ownership, confirmed versions, and audit linkage.
 - Claim token consumption must atomically validate digest, expiry, revocation, prior use, and intended association.
 - Store only a secure digest of claim secrets; raw secrets may appear only in the one-time QR delivery path and never in logs.
@@ -62,12 +72,12 @@ The backend must never receive the MVP reminder-response history (`SEM_CONFIRMAC
 
 # Security and privacy requirements
 
-- Treat documents, structured prescriptions, identity, and patient-prescription relationships as health data.
-- Encrypt transport, persisted health data, documents, and backups; make provider and key-management choices replaceable until architecture selection.
+- Treat documents, OCR/AI responses, structured prescriptions, identity, and patient-prescription relationships as health data, including while processed ephemerally.
+- Encrypt transport, persisted health data, and backups; make provider and key-management choices replaceable until architecture selection.
 - Validate file signatures and limits, isolate document processing, and treat OCR output as untrusted.
 - Rate-limit and audit authentication, invite redemption, token lookup, claim attempts, revocation, and access-control failures.
 - Prevent clinical data, identity data, claim tokens, and medication details from leaking through QR payloads, URLs, logs, analytics, crash reports, referrers, lock screens, or watch notifications.
-- Add negative authorization tests proving one doctor cannot access another doctor's prescriptions, documents, versions, or claim controls.
+- Add negative authorization tests proving one doctor cannot access another doctor's active review session, prescriptions, versions, or claim controls.
 - Production release remains gated by GDPR, retention, residency, regulatory classification, and operational-control decisions.
 
 # Testing strategy
@@ -88,26 +98,25 @@ These require implementation-time architecture decisions or focused spikes, not 
 - backend language/framework, API style, database, and migration tooling;
 - monorepo structure and build/test conventions;
 - identity provider versus first-party identity;
-- object storage, encryption/KMS, and EU deployment region;
-- OCR/AI provider and extraction provenance representation;
+- encryption/KMS and EU deployment region;
+- ephemeral processing transport, OCR/AI provider, provider-side retention controls, and session-only provenance representation;
 - Android UI/persistence/background-work stack and Wear data layer;
 - push delivery versus local scheduling and the offline sync protocol;
 - audit tamper-evidence, observability, and local database encryption.
 
 Provider choices should remain behind adapters with deterministic fakes so domain implementation and tests are not vendor-blocked.
 
-# Blocking product ambiguities
+# Approved decision refinements
 
-The following ambiguities are recorded here rather than silently decided by development:
+- PD-002 resolves masked pre-claim identity confirmation for DEV-009.
+- PD-003 resolves supported scheduling forms, flexibility, duration, and `ADIADA` behavior for DEV-011 and reminder tasks.
+- PD-004 resolves doctor invitation issuance, expiry, replacement, redemption, suspension, and administration for DEV-019.
+- PD-005 resolves patient account/device recovery and confirms that reminder-response history remains local for DEV-020.
+- PD-006 resolves incorrect-claim recovery authority, revocation, reissue, and local-data limits for DEV-021.
+- PD-007 resolves the Portugal pilot retention, export, deletion, exception, and backup lifecycle for DEV-023.
+- PD-008 supersedes any earlier assumption that source documents or raw OCR are retained: documents and raw OCR are never persistent, and an unconfirmed proposal lives only in the active review session.
 
-- `PA-001 — Masked identity`: attributes shown, masking rules, mismatch behavior, and correction path. Blocks DEV-009.
-- `PA-002 — Scheduling semantics`: supported frequency forms, strict interval behavior, permitted windows/tolerance, duration rules, and the exact effect of `ADIADA`. Blocks DEV-011.
-- `PA-003 — Doctor invitation policy`: issuer, expiry duration, replacement behavior, and pilot administration flow. Blocks DEV-019.
-- `PA-004 — Account/device recovery`: recovery proof, device/session revocation, and treatment of device-local history. Blocks DEV-020.
-- `PA-005 — Incorrect claim recovery`: authorized actor, proof, detach/reissue behavior, and treatment of already synchronized local data. Blocks DEV-021.
-- `PA-006 — Retention/deletion`: retention periods, deletion, legal hold, audit preservation, and backup lifecycle. Blocks DEV-023.
-
-These identifiers are local references inside development planning, not approved Product Decisions. Resolution requires the product workflow before the blocked task can be replanned.
+No PA-001 through PA-006 product blocker remains. Task readiness is determined only by the technical dependency graph.
 
 # Dependency graph
 
@@ -119,23 +128,21 @@ DEV-001 ─┬─ DEV-002 ─┬─ DEV-004 ─┬─ DEV-005 ─ DEV-006 ─ DE
          │                                                       │                                └─ DEV-018
          └─ DEV-003 ─┬─ DEV-004                                  └─ DEV-017
                      ├─ DEV-008
-                     ├─ DEV-019
-                     └─ DEV-020
+                     └─ DEV-019
 
-DEV-008 + DEV-010 ─ DEV-021
+DEV-008 + DEV-010 + DEV-015 ─ DEV-021
 DEV-007 + DEV-012 + DEV-014 ─ DEV-015
 DEV-010 + DEV-011 + DEV-012 ─ DEV-017
 DEV-013 + DEV-014 ─ DEV-018
-DEV-022 ─┬─ DEV-023
-DEV-002 ─┤
-DEV-005 ─┘
+DEV-002 + DEV-003 + DEV-010 + DEV-011 + DEV-022 ─ DEV-023
+DEV-003 + DEV-015 ─ DEV-020
 ```
 
 # Parallelization plan
 
 - DEV-001 and DEV-022 have no technical dependency and may eventually run independently, but both remain `PLANNED`.
 - After DEV-001, contracts (DEV-002) and identity foundation (DEV-003) may proceed in parallel.
-- Document ingestion and scheduling-policy work use separate surfaces after their shared contracts stabilize.
+- Ephemeral document processing and scheduling-policy work use separate surfaces after their shared contracts stabilize.
 - PWA, Android, and Wear work starts only after the relevant contracts and domain behavior exist.
 - Shared contracts and schemas should be integrated before downstream parallel client implementation to avoid divergent models.
 
