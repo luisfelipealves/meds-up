@@ -2,7 +2,7 @@
 id: PD-006
 type: product-decision
 title: Recuperação de associação por QR incorreta
-status: READY_FOR_HUMAN_REVIEW
+status: APPROVED_FOR_DEVELOPMENT
 source:
   - PD-001
   - PD-005
