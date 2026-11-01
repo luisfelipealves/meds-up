@@ -1,10 +1,11 @@
 ---
 id: DEV-005
 type: development
-title: Implement secure source-document ingestion
-status: PLANNED
-source: [PD-001]
+title: Implement ephemeral source-document processing gateway
+status: BLOCKED
+source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-004]
+blocked_by: [PD-008_APPROVAL]
 parallel_class: PARALLEL_SAFE
 assigned_agent: null
 branch: null
@@ -12,21 +13,29 @@ worktree: null
 ---
 
 # Objective
-Implement secure ingestion and storage metadata for prescription PDFs, digital files, photographs, and scans.
+Implement an authenticated, ephemeral processing gateway for prescription PDFs,
+digital files, photographs, and scans; it must not retain source documents.
 
 # Scope
-Authenticated upload, ownership linkage, MIME/signature validation, size/page limits, isolated processing handoff, encryption/storage adapter, and audit events.
+Authenticated session-bound submission, ownership linkage, MIME/signature
+validation, size/page limits, isolated API handoff, in-transit protection,
+immediate discard, and non-clinical audit events.
 
 # Out of Scope
-OCR extraction, doctor review UI, retention periods, and production storage provider selection.
+OCR extraction, doctor review UI, durable document storage, retention of source
+documents, and production AI-provider selection.
 
 # Acceptance Criteria
 - Unsupported, oversized, malformed, and unauthorized uploads are rejected.
-- Stored documents remain distinct from structured prescriptions.
-- Document contents and storage references do not leak into logs or public URLs.
+- No source document is written to durable storage, backups, queues, or public
+  URLs.
+- Document contents and processing references do not leak into logs or public
+  URLs.
+- Session completion, failure, or expiry discards the input.
 
 # Validation
-Upload integration tests, malicious/mismatched file tests, authorization tests, and log inspection.
+Ephemeral-processing integration tests, malicious/mismatched file tests,
+authorization tests, expiry/discard tests, persistence scans, and log inspection.
 
 # Dependencies
 DEV-002 and DEV-004.

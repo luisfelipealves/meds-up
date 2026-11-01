@@ -2,9 +2,10 @@
 id: DEV-007
 type: development
 title: Confirm and version prescriptions
-status: PLANNED
-source: [PD-001]
+status: BLOCKED
+source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-004, DEV-006]
+blocked_by: [PD-008_APPROVAL]
 parallel_class: SERIAL
 assigned_agent: null
 branch: null
@@ -12,10 +13,14 @@ worktree: null
 ---
 
 # Objective
-Implement doctor correction and explicit confirmation of extraction proposals as immutable, auditable prescription versions.
+Implement doctor correction and explicit confirmation of session-bound extraction
+proposals as immutable, auditable prescription versions.
 
 # Scope
 Validation, explicit confirmation command, version creation, actor/timestamp audit, clinical-change versioning, and suspension/cancellation state transitions.
+
+The unconfirmed proposal must not be persisted; confirmation persists only the
+confirmed prescription version, never source-document or raw-OCR content.
 
 # Out of Scope
 Doctor PWA screens, claim QR generation, schedule-alternative semantics, and patient-local response history.
