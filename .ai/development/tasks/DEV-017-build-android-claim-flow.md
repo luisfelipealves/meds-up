@@ -3,7 +3,7 @@ id: DEV-017
 type: development
 title: Build Android claim and schedule flow
 status: PLANNED
-source: [PD-001]
+source: [PD-001, PD-002, PD-003]
 depends_on: [DEV-010, DEV-011, DEV-012]
 parallel_class: PARALLEL_CONDITIONAL
 assigned_agent: null
@@ -18,10 +18,11 @@ Build the Android flow for QR scanning, masked identity confirmation, account co
 Scan/input handling, safe token transport, new/existing account paths, claim outcomes, proposed times, permitted alternatives, and confirmation.
 
 # Out of Scope
-Choosing masking or schedule rules, clinical editing, and incorrect-claim recovery.
+Clinical editing, account/device recovery, and incorrect-claim recovery.
 
 # Acceptance Criteria
 - QR handling exposes no clinical data and does not persist raw tokens unnecessarily.
+- Before claim, the UI shows only patient initials and doctor/clinic name; a date-of-birth mismatch receives a generic failure.
 - Both new and existing patients can associate a prescription.
 - Clinical content is read-only; only permitted reminder times can change.
 

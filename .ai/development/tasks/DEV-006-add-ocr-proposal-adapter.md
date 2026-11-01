@@ -17,8 +17,9 @@ source-document processing through a replaceable OCR/AI adapter.
 
 # Scope
 Adapter contract, deterministic fake, session-bound processing state,
-provenance/confidence metadata, failure handling, immediate raw-response
-discard, and non-persistent proposal delivery to doctor review.
+session-only provenance/confidence metadata, failure handling, immediate
+raw-response discard, non-persistent proposal delivery to doctor review, and
+provider controls that disable retention and training on MedsUp inputs/outputs.
 
 # Out of Scope
 Automatic clinical confirmation, vendor selection, schedule interpretation beyond approved contracts, and reminder generation.
@@ -30,6 +31,8 @@ Automatic clinical confirmation, vendor selection, schedule interpretation beyon
 - Provider failures are retry-safe and do not mutate confirmed clinical data.
 - Proposal ends with session expiry, abandonment, or reload and cannot be
   recovered.
+- The provider adapter cannot be enabled without explicit retention/training
+  controls compatible with PD-008.
 
 # Validation
 Adapter contract tests, deterministic fixture tests, retry/failure/expiry tests,

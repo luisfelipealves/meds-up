@@ -3,7 +3,7 @@ id: DEV-012
 type: development
 title: Build Android local prescription store and agenda
 status: PLANNED
-source: [PD-001]
+source: [PD-001, PD-003, PD-005]
 depends_on: [DEV-001, DEV-010, DEV-011]
 parallel_class: PARALLEL_CONDITIONAL
 parallel_notes:
@@ -17,7 +17,7 @@ worktree: null
 Build the Android local data model and consolidated agenda for active prescriptions from multiple doctors.
 
 # Scope
-Encrypted local persistence, prescription/version cache, confirmed schedule storage, sync cursors, agenda queries, and temporary offline availability.
+Encrypted local persistence, prescription/version cache, confirmed schedule storage, sync cursors, agenda queries, temporary offline availability, and a clean bootstrap path that can receive only active prescriptions and approved schedules on a new device.
 
 # Out of Scope
 Reminder response transitions, notification scheduling, account recovery, and Wear OS.

@@ -3,7 +3,7 @@ id: DEV-018
 type: development
 title: Add Wear OS reminder extension
 status: PLANNED
-source: [PD-001]
+source: [PD-001, PD-003]
 depends_on: [DEV-013, DEV-014]
 parallel_class: PARALLEL_SAFE
 assigned_agent: null

@@ -3,7 +3,7 @@ id: DEV-015
 type: development
 title: Synchronize versions and prescription status
 status: PLANNED
-source: [PD-001]
+source: [PD-001, PD-003, PD-005]
 depends_on: [DEV-007, DEV-012, DEV-014]
 parallel_class: SERIAL
 assigned_agent: null

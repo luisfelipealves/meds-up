@@ -3,7 +3,7 @@ id: DEV-010
 type: development
 title: Associate claimed prescription to patient
 status: PLANNED
-source: [PD-001]
+source: [PD-001, PD-002]
 depends_on: [DEV-003, DEV-008, DEV-009]
 parallel_class: SERIAL
 assigned_agent: null

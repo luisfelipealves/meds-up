@@ -2,11 +2,10 @@
 id: DEV-021
 type: development
 title: Implement incorrect-claim recovery
-status: BLOCKED
-source: [PD-001]
-depends_on: [DEV-008, DEV-010]
+status: PLANNED
+source: [PD-001, PD-005, PD-006]
+depends_on: [DEV-008, DEV-010, DEV-015]
 parallel_class: SERIAL
-blocked_by: PA-005
 assigned_agent: null
 branch: null
 worktree: null
@@ -15,22 +14,21 @@ worktree: null
 # Objective
 Implement an auditable recovery path for a prescription claimed by the wrong patient.
 
-# Product Ambiguity
-PA-005 is unresolved: authorized actor, identity proof, detach versus reissue behavior, and treatment of already synchronized local data are undefined.
-
 # Scope
-After resolution: investigation evidence, authorized recovery command, association/token effects, patient communication, and audit trail.
+Patient report and auditable case creation; confirmation by the issuing doctor, with pilot administration only when that doctor is unavailable; immediate revocation of the wrong association and future synchronization/reminders; neutral patient communication; and issue of a new single-use, seven-day QR with a new token for the correct patient.
 
 # Out of Scope
-Silent reassignment or remote deletion of device-local reminder history without approved behavior.
+Patient-initiated unilateral disassociation, silent reassignment, migration of local reminder history, or guaranteed remote deletion from an offline device.
 
 # Acceptance Criteria
-- Recovery requires approved authorization and proof.
-- Every action is auditable and minimizes disclosure.
-- Backend and device outcomes follow the approved detach/reissue and local-data rules.
+- Only the issuing doctor, or pilot administration when the doctor is unavailable, confirms recovery.
+- Revocation stops future access, synchronization, and reminders for the wrong association.
+- Reissue uses a new token and exposes no correct-patient data to the wrong account.
+- Reconciliation removes future reminders for the revoked association without claiming remote deletion of history on an offline device.
+- Reporting, confirmation, revocation, reissue, and new redemption are auditable; local history is not migrated.
 
 # Validation
 Authorization, audit, race, disclosure, reissue, and device-reconciliation tests.
 
 # Dependencies
-DEV-008 and DEV-010 plus an approved resolution of PA-005.
+DEV-008, DEV-010, and DEV-015.
