@@ -12,7 +12,7 @@ completed_at: 2026-11-01T20:15:17Z
 ## Files changed
 
 - Workflow: `.ai/development/tasks/DEV-001-establish-project-foundation.md`, `.ai/development/tasks/DEV-002-define-core-domain-contracts.md`, `.ai/development/tasks/DEV-003-implement-identity-foundation.md`, `.ai/development/technical-plan-PD-001.md`
-- Root/tooling: `.env.example`, `.gitignore`, `Makefile`, `README.md`, `package.json`, `package-lock.json`, `build.gradle.kts`, `settings.gradle.kts`, `gradle.properties`, `gradlew`, `gradlew.bat`, `gradle/wrapper/*`
+- Root/tooling: `.env.example`, `.gitignore`, `Makefile`, `README.md`, `package.json`, `package-lock.json`, `build.gradle.kts`, `settings.gradle.kts`, `gradle.properties`, `gradlew`, `gradle/wrapper/*`
 - Runtime foundations/tests: `apps/backend/**`, `apps/pwa/**`, `apps/android/**`, `apps/wear/**`
 - Architecture/operations: `docs/architecture/**`, `docs/environments.md`, `docs/secrets.md`
 - Validation tooling: `scripts/build-node-surface.mjs`, `scripts/check-foundation.mjs`, `scripts/validate.sh`
@@ -56,6 +56,6 @@ The first validation attempt accurately failed because no Android SDK was instal
 
 ## Integration notes
 
-- Integrate commit `0dffdd93fb25db62a52509852d26feb04d7f7346` plus the following workflow/handoff commit from this branch.
+- Integrate branch HEAD; implementation is anchored at commit `0dffdd93fb25db62a52509852d26feb04d7f7346` and the later branch commits preserve workflow evidence and repository hygiene.
 - Preserve the port names and PD-008 negative boundary when DEV-002/DEV-003 introduce contracts or adapters.
 - No merge to `main`, push, GitHub action, deployment, provider selection, or `.ai/backups` modification was performed.
