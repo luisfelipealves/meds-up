@@ -1,7 +1,7 @@
 ---
 id: DEV-011
 type: development
-title: Define and implement scheduling constraints
+title: Implement approved scheduling constraints
 status: PLANNED
 source: [PD-001, PD-003]
 depends_on: [DEV-002]
@@ -24,6 +24,7 @@ Reminder notification delivery, interpretation of ambiguous/conditional instruct
 - Every supported prescription form has deterministic scheduling behavior.
 - Ambiguous or conditional instructions do not generate automatic reminders.
 - Patient alternatives cannot violate clinical constraints.
+- End-dated treatment produces no future reminders after its end date; continuous treatment requires an explicit marker.
 - Frequency changes invalidate prior scheduling and require fresh confirmation.
 - `ADIADA` is limited to 10, 30, or 60 minutes and leaves the clinical schedule and dose state unchanged.
 

@@ -24,6 +24,7 @@ SMS as a required factor, restoration/upload of local reminder history, biometri
 - A valid link sent to verified email recovers access without mandatory SMS.
 - Recovery or lost-device declaration revokes all prior sessions/devices; revoked devices cannot resume synchronization when online.
 - A new device receives only active prescriptions and approved schedules.
+- Re-enrollment creates a new authorized device identity rather than restoring a revoked device credential.
 - Local history is never uploaded or represented as restored, and the product makes no offline remote-wipe promise.
 
 # Validation

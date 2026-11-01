@@ -30,7 +30,7 @@ documents, and production AI-provider selection.
   URLs.
 - Document contents and processing references do not leak into logs or public
   URLs.
-- Session completion, failure, or expiry discards the input.
+- Completion, failure, or expiry of the OCR/AI request discards the source input; it never remains for the doctor-review session.
 
 # Validation
 Ephemeral-processing integration tests, malicious/mismatched file tests,

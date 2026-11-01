@@ -2,7 +2,7 @@
 id: DEV-022
 type: development
 title: Define privacy and regulatory production controls
-status: PLANNED
+status: READY
 source: [PD-001, PD-007, PD-008]
 depends_on: []
 parallel_class: PARALLEL_SAFE
@@ -22,12 +22,12 @@ Making legal decisions on behalf of counsel, deploying production, or selecting 
 
 # Acceptance Criteria
 - Every stored/transmitted data category has purpose, access, region, protection, and deletion decision owner.
-- Source documents, raw OCR/AI responses, and unconfirmed proposals have no storage or backup lifecycle because they are never persisted.
+- Source documents, raw OCR/AI responses, and unconfirmed proposals have a documented ephemeral processing/discard lifecycle but no storage, export, retention, recovery, or backup lifecycle.
 - Unresolved legal/product decisions are explicit production blockers.
 - Controls map to architecture and test evidence requirements.
 
 # Validation
-Security/privacy review of the data-flow model and traceability to PD-001 requirements.
+Security/privacy review of the data-flow model and traceability to PD-001, PD-007, and PD-008 requirements.
 
 # Dependencies
 None.

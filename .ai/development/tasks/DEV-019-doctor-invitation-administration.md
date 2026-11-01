@@ -24,6 +24,7 @@ Professional verification after the invitation pilot, public doctor signup, bill
 - Only active doctors issue invitations; redemption activates the invited account without further administrative approval.
 - Invitations are bound to a professional email, single-use, valid for seven days, securely stored, and audited with the invitation chain.
 - Reissue to the same email atomically revokes earlier active invitations.
+- The issuer sees the state of invitations it created; invalid, expired, revoked, or used invitations fail neutrally without email/account enumeration.
 - Suspended doctors cannot sign in, invite, import, create, or manage prescriptions.
 
 # Validation

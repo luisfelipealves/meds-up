@@ -24,6 +24,7 @@ Patient-initiated unilateral disassociation, silent reassignment, migration of l
 - Only the issuing doctor, or pilot administration when the doctor is unavailable, confirms recovery.
 - Revocation stops future access, synchronization, and reminders for the wrong association.
 - Reissue uses a new token and exposes no correct-patient data to the wrong account.
+- Reconciliation removes future reminders for the revoked association without claiming remote deletion of history on an offline device.
 - Reporting, confirmation, revocation, reissue, and new redemption are auditable; local history is not migrated.
 
 # Validation

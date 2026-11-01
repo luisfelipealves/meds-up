@@ -23,6 +23,7 @@ Doctor invitation operating policy, account recovery behavior, prescription auth
 # Acceptance Criteria
 - Doctor and patient roles are explicit and cannot be interchanged.
 - Session and authentication failures use the common error model.
+- Session/device primitives support atomic all-session revocation and reject later synchronization from revoked devices.
 - Sensitive values are excluded from logs.
 - Provider-specific code is isolated behind an adapter.
 

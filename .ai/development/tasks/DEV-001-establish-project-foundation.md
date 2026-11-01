@@ -2,8 +2,8 @@
 id: DEV-001
 type: development
 title: Establish project structure and validation foundation
-status: PLANNED
-source: [PD-001]
+status: READY
+source: [PD-001, PD-007, PD-008]
 depends_on: []
 parallel_class: PARALLEL_SAFE
 assigned_agent: null
@@ -15,7 +15,7 @@ worktree: null
 Establish the greenfield repository structure and common build, test, lint, and architecture conventions for backend, PWA, Android, and Wear OS work.
 
 # Scope
-Define project boundaries, workspace layout, baseline validation commands, environment separation, and architecture records for selected technologies. Keep vendor services replaceable.
+Define project boundaries, workspace layout, baseline validation commands, environment separation, and architecture records for selected technologies. Keep vendor services replaceable and prohibit durable infrastructure paths for source documents, raw OCR/AI responses, or unconfirmed proposals.
 
 # Out of Scope
 Product features, production deployment, vendor-specific clinical behavior, and application UI.
@@ -24,6 +24,7 @@ Product features, production deployment, vendor-specific clinical behavior, and 
 - All four runtime surfaces have an explicit location and build/test entry point.
 - Common validation and secret-handling conventions are documented and executable.
 - Technology choices address health-data security, client compatibility, and EU deployment constraints.
+- Baseline architecture contains no document bucket, durable document/OCR queue, browser persistence, or backup path for ephemeral clinical input.
 - No credentials or health data are committed.
 
 # Validation

@@ -13,12 +13,12 @@ source:
   - PD-007
   - PD-008
 created_at: 2026-11-01T19:07:37Z
-updated_at: 2026-11-01T20:00:37Z
+updated_at: 2026-11-01T20:02:06Z
 ---
 
 # Objective
 
-Define the technical delivery plan for PD-001 as refined by PD-002 through PD-008. This plan creates no implementation authorization beyond the approved product scope; every executable DEV task remains `PLANNED` until its technical dependencies are satisfied.
+Define the technical delivery plan for PD-001 as refined by PD-002 through PD-008. This plan creates no implementation authorization beyond the approved product scope. Tasks with no unresolved technical dependency are `READY`; all dependent tasks remain `PLANNED` until their prerequisites reach the required implementation/integration state.
 
 # Intake and repository state
 
@@ -62,8 +62,8 @@ The backend must never receive the MVP reminder-response history (`SEM_CONFIRMAC
 # Persistence and concurrency direction
 
 - Source documents, images, PDFs, scans, raw OCR/AI responses, and unconfirmed extraction proposals must never be written to a database, object store, backup, durable queue, shared cache, browser persistence, logs, analytics, or traces.
-- A source document and its untrusted structured proposal exist only within the active doctor-review session. Completion, failure, timeout, abandonment, logout, or reload discards them; resumption requires a new upload.
-- The document is discarded when the OCR/AI request completes, fails, or expires. Confirmation persists only the corrected and explicitly confirmed structured prescription.
+- A source document exists only for the active OCR/AI request and is discarded when that request completes, fails, or expires.
+- The resulting untrusted structured proposal exists only within the active doctor-review session. Confirmation persists only the corrected and explicitly confirmed structured prescription; timeout, abandonment, logout, or reload discards an unconfirmed proposal, and resumption requires a new upload.
 - Use transactional storage for claim issuance/consumption, ownership, confirmed versions, and audit linkage.
 - Claim token consumption must atomically validate digest, expiry, revocation, prior use, and intended association.
 - Store only a secure digest of claim secrets; raw secrets may appear only in the one-time QR delivery path and never in logs.
@@ -111,36 +111,47 @@ Provider choices should remain behind adapters with deterministic fakes so domai
 - PD-002 resolves masked pre-claim identity confirmation for DEV-009.
 - PD-003 resolves supported scheduling forms, flexibility, duration, and `ADIADA` behavior for DEV-011 and reminder tasks.
 - PD-004 resolves doctor invitation issuance, expiry, replacement, redemption, suspension, and administration for DEV-019.
-- PD-005 resolves patient account/device recovery and confirms that reminder-response history remains local for DEV-020.
+- PD-005 resolves patient account/device recovery and confirms that reminder-response history remains local for DEV-020; this boundary supersedes PD-007's reference to synchronized reminder events.
 - PD-006 resolves incorrect-claim recovery authority, revocation, reissue, and local-data limits for DEV-021.
 - PD-007 resolves the Portugal pilot retention, export, deletion, exception, and backup lifecycle for DEV-023.
 - PD-008 supersedes any earlier assumption that source documents or raw OCR are retained: documents and raw OCR are never persistent, and an unconfirmed proposal lives only in the active review session.
 
 No PA-001 through PA-006 product blocker remains. Task readiness is determined only by the technical dependency graph.
 
-# Dependency graph
+# Status and dependency graph
 
 ```text
-DEV-001 ─┬─ DEV-002 ─┬─ DEV-004 ─┬─ DEV-005 ─ DEV-006 ─ DEV-007 ─┬─ DEV-008 ─ DEV-009 ─ DEV-010
-         │           │           │                               │
-         │           │           └───────────────────────────────┼─ DEV-016
-         │           └─ DEV-011 ─────────────────────────────────┼─ DEV-012 ─ DEV-013 ─ DEV-014 ─┬─ DEV-015
-         │                                                       │                                └─ DEV-018
-         └─ DEV-003 ─┬─ DEV-004                                  └─ DEV-017
-                     ├─ DEV-008
-                     └─ DEV-019
+READY:   DEV-001, DEV-022
 
-DEV-008 + DEV-010 + DEV-015 ─ DEV-021
-DEV-007 + DEV-012 + DEV-014 ─ DEV-015
-DEV-010 + DEV-011 + DEV-012 ─ DEV-017
-DEV-013 + DEV-014 ─ DEV-018
-DEV-002 + DEV-003 + DEV-010 + DEV-011 + DEV-022 ─ DEV-023
-DEV-003 + DEV-015 ─ DEV-020
+DEV-001                         -> DEV-002, DEV-003
+DEV-002                         -> DEV-011
+DEV-002 + DEV-003               -> DEV-004
+DEV-003                         -> DEV-019
+DEV-002 + DEV-004               -> DEV-005
+DEV-005                         -> DEV-006
+DEV-002 + DEV-004 + DEV-006     -> DEV-007
+DEV-002 + DEV-003 + DEV-004
+  + DEV-007                     -> DEV-008
+DEV-008                         -> DEV-009
+DEV-003 + DEV-008 + DEV-009     -> DEV-010
+DEV-001 + DEV-010 + DEV-011     -> DEV-012
+DEV-012                         -> DEV-013
+DEV-012 + DEV-013               -> DEV-014
+DEV-007 + DEV-012 + DEV-014     -> DEV-015
+DEV-005 + DEV-007 + DEV-008     -> DEV-016
+DEV-010 + DEV-011 + DEV-012     -> DEV-017
+DEV-013 + DEV-014               -> DEV-018
+DEV-003 + DEV-015               -> DEV-020
+DEV-008 + DEV-010 + DEV-015     -> DEV-021
+DEV-002 + DEV-003 + DEV-007
+  + DEV-008 + DEV-010 + DEV-011
+  + DEV-015 + DEV-019 + DEV-020
+  + DEV-021 + DEV-022           -> DEV-023
 ```
 
 # Parallelization plan
 
-- DEV-001 and DEV-022 have no technical dependency and may eventually run independently, but both remain `PLANNED`.
+- DEV-001 and DEV-022 have no technical dependency, are `READY`, and may run independently only after a separate implementation assignment.
 - After DEV-001, contracts (DEV-002) and identity foundation (DEV-003) may proceed in parallel.
 - Ephemeral document processing and scheduling-policy work use separate surfaces after their shared contracts stabilize.
 - PWA, Android, and Wear work starts only after the relevant contracts and domain behavior exist.
