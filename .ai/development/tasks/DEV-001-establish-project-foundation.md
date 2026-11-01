@@ -2,7 +2,7 @@
 id: DEV-001
 type: development
 title: Establish project structure and validation foundation
-status: IMPLEMENTED
+status: REVIEW
 source: [PD-001, PD-007, PD-008]
 depends_on: []
 parallel_class: PARALLEL_SAFE
@@ -10,10 +10,13 @@ assigned_agent: developer-001
 branch: agent/dev-001-foundation
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-001-foundation
 started_at: 2026-11-01T20:10:30Z
-updated_at: 2026-11-01T20:15:17Z
+updated_at: 2026-11-01T20:16:57Z
 completed_at: 2026-11-01T20:15:17Z
 commit: 0dffdd93fb25db62a52509852d26feb04d7f7346
 handoff: .ai/development/handoffs/DEV-001-developer-handoff.md
+integration_branch: agent/dev-001-foundation
+integration_commit: 08f877f3aa4a34efe06dadab2ed8ddcc4824b693
+integration_handoff: .ai/development/integration/DEV-001-integration-handoff.md
 ---
 
 # Objective
