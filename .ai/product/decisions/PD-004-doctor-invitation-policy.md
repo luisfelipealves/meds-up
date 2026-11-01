@@ -2,7 +2,7 @@
 id: PD-004
 type: product-decision
 title: Política de convite de médicos no piloto
-status: READY_FOR_HUMAN_REVIEW
+status: APPROVED_FOR_DEVELOPMENT
 source:
   - PD-001
   - PQ-003
