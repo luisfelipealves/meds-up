@@ -2,7 +2,7 @@
 id: PD-008
 type: product-decision
 title: Processamento efémero de documentos e OCR
-status: READY_FOR_HUMAN_REVIEW
+status: APPROVED_FOR_DEVELOPMENT
 source:
   - PD-001
   - PD-007
@@ -83,9 +83,8 @@ criada uma prescrição estruturada persistente. Essa confirmação permanece a
   durante a sessão e é descartada sem confirmação.
 - PD-001 continua a exigir confirmação explícita do médico antes de lembretes.
 
-## Human action required
+## Approval
 
-Esta decisão altera a parte de documentos-fonte de PD-001 e a aplicação de
-PD-007 a esses documentos. Para autorizar o desenvolvimento, emitir:
-
-`Aprovo PD-008 para desenvolvimento.`
+Aprovada para desenvolvimento em 2026-11-01. Esta decisão substitui as partes
+de PD-001 e PD-007 relativas à persistência de documentos-fonte e resultados
+OCR.

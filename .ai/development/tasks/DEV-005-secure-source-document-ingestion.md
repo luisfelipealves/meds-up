@@ -2,10 +2,9 @@
 id: DEV-005
 type: development
 title: Implement ephemeral source-document processing gateway
-status: BLOCKED
+status: PLANNED
 source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-004]
-blocked_by: [PD-008_APPROVAL]
 parallel_class: PARALLEL_SAFE
 assigned_agent: null
 branch: null

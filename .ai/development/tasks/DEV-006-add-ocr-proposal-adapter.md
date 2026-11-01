@@ -2,10 +2,9 @@
 id: DEV-006
 type: development
 title: Add OCR extraction proposal adapter
-status: BLOCKED
+status: PLANNED
 source: [PD-001, PD-008]
 depends_on: [DEV-005]
-blocked_by: [PD-008_APPROVAL]
 parallel_class: PARALLEL_SAFE
 assigned_agent: null
 branch: null
