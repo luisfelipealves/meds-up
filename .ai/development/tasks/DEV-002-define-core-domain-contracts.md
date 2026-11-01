@@ -2,7 +2,7 @@
 id: DEV-002
 type: development
 title: Define core prescription and API contracts
-status: PLANNED
+status: READY
 source: [PD-001, PD-008]
 depends_on: [DEV-001]
 parallel_class: PARALLEL_CONDITIONAL
@@ -11,6 +11,7 @@ parallel_notes:
 assigned_agent: null
 branch: null
 worktree: null
+updated_at: 2026-11-01T20:15:17Z
 ---
 
 # Objective
