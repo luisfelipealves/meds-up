@@ -2,7 +2,7 @@
 id: PD-003
 type: product-decision
 title: Semântica de programação de lembretes
-status: READY_FOR_HUMAN_REVIEW
+status: APPROVED_FOR_DEVELOPMENT
 source:
   - PD-001
   - PQ-002
