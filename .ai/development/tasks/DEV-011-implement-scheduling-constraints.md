@@ -2,35 +2,33 @@
 id: DEV-011
 type: development
 title: Define and implement scheduling constraints
-status: BLOCKED
-source: [PD-001]
+status: PLANNED
+source: [PD-001, PD-003]
 depends_on: [DEV-002]
 parallel_class: SERIAL
-blocked_by: PA-002
 assigned_agent: null
 branch: null
 worktree: null
 ---
 
 # Objective
-Define and implement the clinical scheduling grammar, proposed schedules, permitted patient alternatives, and strict-interval validation.
+Implement the approved clinical scheduling grammar, proposed schedules, permitted patient alternatives, and strict-interval validation.
 
 # Scope
-Frequency and duration representation, time windows, fixed/interval constraints, validation, frequency-change invalidation, and schedule confirmation rules.
+Explicit times; strict intervals; start date; end date or continuous-treatment marker; doctor-controlled flexibility and minimum interval; deterministic rejection of ambiguous/conditional instructions; frequency-change invalidation; and schedule confirmation rules. `ADIADA` offers only 10, 30, or 60 minutes and does not alter the clinical schedule, future reminders, or dose state.
 
 # Out of Scope
-Inventing clinical semantics, reminder notification delivery, and autonomous clinical recommendations.
-
-# Product Ambiguity
-PA-002 is unresolved: supported frequency forms, strict interval behavior, permitted windows/tolerance, duration rules, and the exact effect of `ADIADA` are not defined.
+Reminder notification delivery, interpretation of ambiguous/conditional instructions, and autonomous clinical recommendations.
 
 # Acceptance Criteria
 - Every supported prescription form has deterministic scheduling behavior.
+- Ambiguous or conditional instructions do not generate automatic reminders.
 - Patient alternatives cannot violate clinical constraints.
 - Frequency changes invalidate prior scheduling and require fresh confirmation.
+- `ADIADA` is limited to 10, 30, or 60 minutes and leaves the clinical schedule and dose state unchanged.
 
 # Validation
 Table-driven domain tests for every approved frequency, boundary, invalid alternative, duration, and frequency change.
 
 # Dependencies
-DEV-002 plus an approved resolution of PA-002.
+DEV-002.
