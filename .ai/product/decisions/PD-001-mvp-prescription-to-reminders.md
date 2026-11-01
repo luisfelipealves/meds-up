@@ -2,7 +2,7 @@
 id: PD-001
 type: product-decision
 title: MedsUp MVP — prescrição para lembretes
-status: READY_FOR_HUMAN_REVIEW
+status: APPROVED_FOR_DEVELOPMENT
 source:
   - Contexto preservado: Arquitetura de prescrição digital
   - Decisões de produto de 2026-11-01
