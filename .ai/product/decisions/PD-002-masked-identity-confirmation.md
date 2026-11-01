@@ -2,7 +2,7 @@
 id: PD-002
 type: product-decision
 title: Confirmação de identidade no claim de QR
-status: READY_FOR_HUMAN_REVIEW
+status: APPROVED_FOR_DEVELOPMENT
 source:
   - PD-001
   - PQ-001
