@@ -2,7 +2,7 @@
 id: PD-007
 type: product-decision
 title: Retenção, portabilidade e eliminação de dados — piloto Portugal
-status: READY_FOR_HUMAN_REVIEW
+status: APPROVED_FOR_DEVELOPMENT
 source:
   - PD-001
   - PD-005
@@ -97,9 +97,6 @@ de direitos e tratamento de dados sob a sua responsabilidade ou instruções.
 - Decisão humana de 2026-11-01: piloto em Portugal, conservação por cinco
   anos, exportação de dados e eliminação de conta/dados.
 
-## Human action required
+## Approval
 
-Para autorizar o planeamento detalhado de DEV-023 após as dependências, emitir
-explicitamente:
-
-`Aprovo PD-007 para desenvolvimento.`
+Aprovada para desenvolvimento em 2026-11-01.

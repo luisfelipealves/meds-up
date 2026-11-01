@@ -6,7 +6,7 @@ status: BLOCKED
 source: [PD-001, PD-005, PD-006, PD-007]
 depends_on: [DEV-002, DEV-005, DEV-022]
 parallel_class: SERIAL
-blocked_by: [DEV-002, DEV-005, DEV-022, PD-007_APPROVAL]
+blocked_by: [DEV-002, DEV-005, DEV-022]
 assigned_agent: null
 branch: null
 worktree: null
