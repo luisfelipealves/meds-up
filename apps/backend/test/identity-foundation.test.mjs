@@ -12,7 +12,7 @@ import {
 
 import {
   ROLES,
-  requireRole,
+  createRoleGuard,
 } from "../src/identity/subject.mjs";
 import * as subjectModule from "../src/identity/subject.mjs";
 import { ERROR_CODES, toErrorEnvelope } from "../src/identity/errors.mjs";
@@ -20,8 +20,12 @@ import { createSessionManager } from "../src/identity/session-manager.mjs";
 import { createStructuredLogger } from "../src/observability/structured-logger.mjs";
 import {
   TEST_IDENTITIES,
+  assertTestAuthenticatedSubject,
   authenticateTestIdentity,
+  createDeterministicIdentityHarness,
 } from "./support/deterministic-identity-harness.mjs";
+
+const requireRole = createRoleGuard(assertTestAuthenticatedSubject);
 
 async function productionModules(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -64,6 +68,28 @@ test("ordinary application callers cannot mint authenticated subjects", () => {
   assert.equal(Object.hasOwn(subjectModule, "createAuthenticatedSubject"), false);
   assert.throws(
     () => requireRole({ subjectId: "attacker", role: ROLES.DOCTOR }, ROLES.DOCTOR),
+    { code: "INVALID_AUTHENTICATED_SUBJECT" },
+  );
+});
+
+test("subjects are rejected across independently configured authorities", async () => {
+  const legitimateAuthority = createDeterministicIdentityHarness();
+  const attackerAuthority = createDeterministicIdentityHarness();
+  const legitimateGuard = createRoleGuard(legitimateAuthority.assertAuthenticatedSubject);
+  const legitimateSessions = createSessionManager({
+    assertAuthenticatedSubject: legitimateAuthority.assertAuthenticatedSubject,
+    clock: () => Date.parse("2026-11-03T12:00:00Z"),
+    sessionTtlMs: 60_000,
+    tokenFactory: () => "opaque-session-token-authority",
+  });
+  const attackerSubject = await attackerAuthority.authenticate(TEST_IDENTITIES.DOCTOR.credential);
+
+  assert.throws(
+    () => legitimateGuard(attackerSubject, ROLES.DOCTOR),
+    { code: "INVALID_AUTHENTICATED_SUBJECT" },
+  );
+  assert.throws(
+    () => legitimateSessions.establishSession(attackerSubject, "device_01JBR7C4N8M2X5K9Q1T6V3AZ"),
     { code: "INVALID_AUTHENTICATED_SUBJECT" },
   );
 });
@@ -120,6 +146,7 @@ test("test-only harness authenticates deterministic safe test identities", async
 test("sessions authenticate until their configured expiry", async () => {
   let now = Date.parse("2026-11-03T12:00:00Z");
   const sessions = createSessionManager({
+    assertAuthenticatedSubject: assertTestAuthenticatedSubject,
     clock: () => now,
     sessionTtlMs: 60_000,
     tokenFactory: () => "opaque-session-token-1",
@@ -136,6 +163,7 @@ test("sessions authenticate until their configured expiry", async () => {
 
 test("sessions can only be established for authenticated subjects", () => {
   const sessions = createSessionManager({
+    assertAuthenticatedSubject: assertTestAuthenticatedSubject,
     clock: () => Date.parse("2026-11-03T12:00:00Z"),
     sessionTtlMs: 60_000,
     tokenFactory: () => "opaque-session-token-a",
@@ -150,6 +178,7 @@ test("sessions can only be established for authenticated subjects", () => {
 test("all-session revocation invalidates every session and device in one transition", async () => {
   const tokens = ["opaque-session-token-a", "opaque-session-token-b"];
   const sessions = createSessionManager({
+    assertAuthenticatedSubject: assertTestAuthenticatedSubject,
     clock: () => Date.parse("2026-11-03T12:00:00Z"),
     sessionTtlMs: 60_000,
     tokenFactory: () => tokens.shift(),
@@ -170,6 +199,7 @@ test("all-session revocation invalidates every session and device in one transit
 
 test("a revoked device is rejected when it later attempts synchronization", async () => {
   const sessions = createSessionManager({
+    assertAuthenticatedSubject: assertTestAuthenticatedSubject,
     clock: () => Date.parse("2026-11-03T12:00:00Z"),
     sessionTtlMs: 60_000,
     tokenFactory: () => "opaque-session-token-a",
@@ -188,6 +218,7 @@ test("a revoked device is rejected when it later attempts synchronization", asyn
 test("revoked devices require explicit trusted replacement before a fresh session", async () => {
   const tokens = ["opaque-session-token-old", "opaque-session-token-fresh", "opaque-session-token-replacement"];
   const sessions = createSessionManager({
+    assertAuthenticatedSubject: assertTestAuthenticatedSubject,
     clock: () => Date.parse("2026-11-03T12:00:00Z"),
     sessionTtlMs: 60_000,
     tokenFactory: () => tokens.shift(),
@@ -209,6 +240,7 @@ test("revoked devices require explicit trusted replacement before a fresh sessio
 
 test("session establishment rejects invalid device IDs and duplicate generated tokens", async () => {
   const sessions = createSessionManager({
+    assertAuthenticatedSubject: assertTestAuthenticatedSubject,
     clock: () => Date.parse("2026-11-03T12:00:00Z"),
     sessionTtlMs: 60_000,
     tokenFactory: () => "duplicate-opaque-session-token",

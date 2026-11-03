@@ -1,6 +1,5 @@
 import { ROLES } from "@medsup/contracts";
-
-import { createIdentityCompositionRoot } from "../../src/identity/identity-port.mjs";
+import { ERROR_CODES, FoundationError } from "../../src/identity/errors.mjs";
 
 export const TEST_IDENTITIES = Object.freeze({
   DOCTOR: Object.freeze({
@@ -15,14 +14,34 @@ export const TEST_IDENTITIES = Object.freeze({
   }),
 });
 
-const records = Object.values(TEST_IDENTITIES);
-const identity = createIdentityCompositionRoot(Object.freeze({
-  async authenticate(credential) {
-    const record = records.find(({ credential: expected }) =>
-      credential?.login === expected.login && credential?.secret === expected.secret);
-    if (!record) throw new Error("Authentication failed");
-    return Object.freeze({ subjectId: record.subjectId, role: record.role });
-  },
-}));
+export function createDeterministicIdentityHarness(identities = TEST_IDENTITIES) {
+  const authenticatedSubjects = new WeakSet();
+  const records = Object.values(identities);
 
+  return Object.freeze({
+    async authenticate(credential) {
+      const record = records.find(({ credential: expected }) =>
+        credential?.login === expected.login && credential?.secret === expected.secret);
+      if (!record) {
+        throw new FoundationError(ERROR_CODES.AUTHENTICATION_FAILED, "Authentication failed");
+      }
+      const subject = Object.freeze({ subjectId: record.subjectId, role: record.role });
+      authenticatedSubjects.add(subject);
+      return subject;
+    },
+
+    assertAuthenticatedSubject(subject) {
+      if (!subject || !authenticatedSubjects.has(subject)) {
+        throw new FoundationError(
+          ERROR_CODES.INVALID_AUTHENTICATED_SUBJECT,
+          "Authenticated subject is invalid",
+        );
+      }
+      return subject;
+    },
+  });
+}
+
+const identity = createDeterministicIdentityHarness();
 export const authenticateTestIdentity = identity.authenticate;
+export const assertTestAuthenticatedSubject = identity.assertAuthenticatedSubject;

@@ -1,9 +1,18 @@
 import { ERROR_CODES, FoundationError } from "./errors.mjs";
-import { assertAuthenticatedSubject } from "./subject.mjs";
 
-export function createSessionManager({ clock = Date.now, sessionTtlMs, tokenFactory }) {
-  if (!Number.isSafeInteger(sessionTtlMs) || sessionTtlMs <= 0 || typeof tokenFactory !== "function") {
-    throw new TypeError("A positive sessionTtlMs and tokenFactory are required");
+export function createSessionManager({
+  assertAuthenticatedSubject,
+  clock = Date.now,
+  sessionTtlMs,
+  tokenFactory,
+}) {
+  if (
+    typeof assertAuthenticatedSubject !== "function"
+    || !Number.isSafeInteger(sessionTtlMs)
+    || sessionTtlMs <= 0
+    || typeof tokenFactory !== "function"
+  ) {
+    throw new TypeError("A trusted subject assertion, positive sessionTtlMs, and tokenFactory are required");
   }
 
   const sessions = new Map();
