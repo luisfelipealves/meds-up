@@ -6,7 +6,9 @@ worktree: /home/felipe/projetos/meds-up-worktrees/dev-001-foundation
 commit: 0dffdd93fb25db62a52509852d26feb04d7f7346
 completed_at: 2026-11-01T20:15:17Z
 human_approved_at: 2026-11-03T15:39:03Z
-merge_status: NOT_MERGED
+merged_at: 2026-11-03T15:41:55Z
+merge_commit: aa1b7b2c7c11a107560d600eaee395befb4aa204
+merge_status: MERGED_LOCAL
 ---
 
 # Developer handoff — DEV-001
