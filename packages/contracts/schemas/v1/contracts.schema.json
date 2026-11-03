@@ -97,8 +97,8 @@
                 "additionalProperties": false,
                 "required": ["medicationName", "dose"],
                 "properties": {
-                  "medicationName": { "type": "string", "minLength": 1 },
-                  "dose": { "type": "string", "minLength": 1 }
+                  "medicationName": { "type": "string", "minLength": 1, "pattern": "\\S" },
+                  "dose": { "type": "string", "minLength": 1, "pattern": "\\S" }
                 }
               }
             }
@@ -159,15 +159,80 @@
       "properties": {
         "apiVersion": { "const": "v1" },
         "error": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["code", "message", "requestId", "retryable"],
-          "properties": {
-            "code": { "enum": ["VALIDATION_FAILED", "UNAUTHORIZED", "NOT_FOUND", "CONFLICT", "STALE_RESOURCE_VERSION", "IDEMPOTENCY_CONFLICT", "UNSUPPORTED_API_VERSION", "AUTHENTICATION_FAILED", "INVALID_AUTHENTICATED_SUBJECT", "ROLE_FORBIDDEN", "SESSION_EXPIRED", "SESSION_REVOKED", "DEVICE_REVOKED", "INTERNAL_ERROR"] },
-            "message": { "type": "string" },
-            "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
-            "retryable": { "type": "boolean" }
-          }
+          "oneOf": [
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/VALIDATION_FAILED" },
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/UNAUTHORIZED" },
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/NOT_FOUND" },
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/CONFLICT" },
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/STALE_RESOURCE_VERSION" },
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/IDEMPOTENCY_CONFLICT" },
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/UNSUPPORTED_API_VERSION" },
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/AUTHENTICATION_FAILED" },
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/INVALID_AUTHENTICATED_SUBJECT" },
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/ROLE_FORBIDDEN" },
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/SESSION_EXPIRED" },
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/SESSION_REVOKED" },
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/DEVICE_REVOKED" },
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/INTERNAL_ERROR" }
+          ]
+        }
+      },
+      "$defs": {
+        "VALIDATION_FAILED": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "VALIDATION_FAILED" }, "message": { "const": "The request is invalid." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": false } }
+        },
+        "UNAUTHORIZED": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "UNAUTHORIZED" }, "message": { "const": "The request is not authorized." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": false } }
+        },
+        "NOT_FOUND": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "NOT_FOUND" }, "message": { "const": "The resource was not found." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": false } }
+        },
+        "CONFLICT": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "CONFLICT" }, "message": { "const": "The request conflicts with the resource state." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": false } }
+        },
+        "STALE_RESOURCE_VERSION": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "STALE_RESOURCE_VERSION" }, "message": { "const": "The resource changed; refresh and retry." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": true } }
+        },
+        "IDEMPOTENCY_CONFLICT": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "IDEMPOTENCY_CONFLICT" }, "message": { "const": "The idempotency key was already used for another request." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": false } }
+        },
+        "UNSUPPORTED_API_VERSION": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "UNSUPPORTED_API_VERSION" }, "message": { "const": "The API version is not supported." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": false } }
+        },
+        "AUTHENTICATION_FAILED": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "AUTHENTICATION_FAILED" }, "message": { "const": "Authentication failed." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": false } }
+        },
+        "INVALID_AUTHENTICATED_SUBJECT": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "INVALID_AUTHENTICATED_SUBJECT" }, "message": { "const": "The authenticated subject is invalid." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": false } }
+        },
+        "ROLE_FORBIDDEN": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "ROLE_FORBIDDEN" }, "message": { "const": "The authenticated role is not permitted." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": false } }
+        },
+        "SESSION_EXPIRED": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "SESSION_EXPIRED" }, "message": { "const": "The session has expired." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": false } }
+        },
+        "SESSION_REVOKED": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "SESSION_REVOKED" }, "message": { "const": "The session is not active." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": false } }
+        },
+        "DEVICE_REVOKED": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "DEVICE_REVOKED" }, "message": { "const": "The device is not authorized to synchronize." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": false } }
+        },
+        "INTERNAL_ERROR": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "INTERNAL_ERROR" }, "message": { "const": "The request could not be completed." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": true } }
         }
       }
     }

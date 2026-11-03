@@ -20,6 +20,7 @@ Private patient reminder-response history is not represented by this package. Cl
 - Status synchronization uses monotonic `serverVersion` values and explicit `SUSPENDED`/`CANCELLED` events. Clients must not recreate future work after either event.
 - Request validators reject unknown fields. Response readers ignore unknown additive fields within v1. Removing required fields, changing existing semantics, or introducing an enum value that cannot be handled safely requires a new major API version.
 - Errors use the fixed, content-free `ErrorEnvelope`. Provider payloads, clinical values, source-document metadata, and free-form diagnostic details are not allowed.
+- AJV tests compile every published definition and exercise valid, invalid, nested-closure, and runtime-parity fixtures. Cross-field comparisons that JSON Schema cannot express (`expiresAt` after `generatedAt`, matching confirming/owner doctor IDs, timestamp ordering, and allowed status-transition pairs) remain explicit application-validator rules and are tested there.
 
 ## Usage
 

@@ -22,18 +22,41 @@ export function createSessionManager({ clock = Date.now, sessionTtlMs, tokenFact
     return session.subject;
   }
 
+  function createSession(subject, deviceId, { replaceRevoked = false } = {}) {
+    assertAuthenticatedSubject(subject);
+    if (typeof deviceId !== "string" || !/^[A-Za-z0-9_-]{16,128}$/.test(deviceId)) {
+      throw new TypeError("Device ID must be a bounded opaque identifier");
+    }
+    const key = deviceKey(subject.subjectId, deviceId);
+    const existingDevice = devices.get(key);
+    if (existingDevice?.revoked && !replaceRevoked) {
+      throw new FoundationError(ERROR_CODES.DEVICE_REVOKED, "Device is not authorized to synchronize");
+    }
+    if (replaceRevoked && !existingDevice?.revoked) {
+      throw new FoundationError(ERROR_CODES.DEVICE_REVOKED, "Device is not authorized to synchronize");
+    }
+
+    const token = tokenFactory();
+    if (sessions.has(token)) {
+      throw new FoundationError(ERROR_CODES.CONFLICT, "Generated session token is not unique");
+    }
+    const expiresAtMs = clock() + sessionTtlMs;
+    devices.set(key, {
+      subjectId: subject.subjectId,
+      deviceId,
+      revoked: false,
+    });
+    sessions.set(token, { subject, deviceId, expiresAtMs, revoked: false });
+    return Object.freeze({ token, deviceId, expiresAt: new Date(expiresAtMs).toISOString() });
+  }
+
   return Object.freeze({
     establishSession(subject, deviceId) {
-      assertAuthenticatedSubject(subject);
-      const token = tokenFactory();
-      const expiresAtMs = clock() + sessionTtlMs;
-      devices.set(deviceKey(subject.subjectId, deviceId), {
-        subjectId: subject.subjectId,
-        deviceId,
-        revoked: false,
-      });
-      sessions.set(token, { subject, deviceId, expiresAtMs, revoked: false });
-      return Object.freeze({ token, deviceId, expiresAt: new Date(expiresAtMs).toISOString() });
+      return createSession(subject, deviceId);
+    },
+
+    replaceRevokedDevice(subject, deviceId) {
+      return createSession(subject, deviceId, { replaceRevoked: true });
     },
 
     authenticate,
