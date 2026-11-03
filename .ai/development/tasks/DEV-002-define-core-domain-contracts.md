@@ -2,7 +2,7 @@
 id: DEV-002
 type: development
 title: Define core prescription and API contracts
-status: IMPLEMENTED
+status: INTEGRATED
 source: [PD-001, PD-008]
 depends_on: [DEV-001]
 parallel_class: PARALLEL_CONDITIONAL
@@ -14,8 +14,12 @@ worktree: /home/felipe/projetos/meds-up-worktrees/dev-002-core-contracts
 commit: da1bd862ff78629367dcb024c687ea6cd63a35f0
 handoff: .ai/development/handoffs/DEV-002-developer-handoff.md
 started_at: 2026-11-03T15:44:25Z
-updated_at: 2026-11-03T15:51:27Z
+updated_at: 2026-11-03T15:55:44Z
 completed_at: 2026-11-03T15:51:27Z
+integration_branch: agent/integration-dev-002-dev-003
+integration_commit: da5a6c98e9e51f4b503bd0593e03ecad4018075d
+integration_handoff: .ai/development/integration/DEV-002-DEV-003-integration-handoff.md
+integrated_at: 2026-11-03T15:55:44Z
 ---
 
 # Objective
@@ -50,5 +54,7 @@ Implemented `@medsup/contracts` as a dependency-free, provider-neutral v1 worksp
 - `npm run build -w @medsup/contracts && npm run lint -w @medsup/contracts` — passed.
 - `ANDROID_HOME=/home/felipe/.hermes/cache/scratch/android-sdk ANDROID_SDK_ROOT=/home/felipe/.hermes/cache/scratch/android-sdk ./scripts/validate.sh` — passed all Node, Android, and Wear build/test/lint/check commands.
 - `git diff --check` — passed.
+- Integration added canonical doctor/patient roles and identity/session error codes to `@medsup/contracts`; backend compatibility tests consume those exact shared objects and the shared error envelope.
+- Integration full validation passed all Node, Android, and Wear commands; see `.ai/development/integration/DEV-002-DEV-003-integration-handoff.md`.
 
 See `.ai/development/handoffs/DEV-002-developer-handoff.md` for RED evidence and integration notes.
