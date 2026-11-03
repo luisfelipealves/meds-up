@@ -2,7 +2,7 @@
 id: DEV-004
 type: development
 title: Enforce doctor ownership isolation
-status: INTEGRATED
+status: BLOCKED
 source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-003]
 parallel_class: SERIAL
@@ -10,7 +10,7 @@ assigned_agent: developer-dev-004
 branch: agent/dev-004-doctor-ownership
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-004-doctor-ownership
 started_at: 2026-11-03T17:28:46Z
-updated_at: 2026-11-03T17:38:55Z
+updated_at: 2026-11-03T17:40:33Z
 completed_at: 2026-11-03T17:31:14Z
 commit: 5d0adfe4bd980e3706a58d00ca409bd2ca053dd0
 handoff: .ai/development/handoffs/DEV-004-developer-handoff.md
@@ -26,6 +26,10 @@ review: .ai/reviews/DEV-004-independent-review.md
 reviewed_commit: eddb178f171a98738b018b65afff1a45298d068b
 review_status: REMEDIATED_PENDING_REREVIEW
 previous_review_blocking_findings: 3
+final_review: .ai/reviews/DEV-004-independent-final-review.md
+final_reviewed_code_commit: 2a7c804d0e9ae3bd28411130df4416f910363a49
+final_review_status: CHANGES_REQUIRED
+final_review_blocking_findings: 1
 ---
 
 # Objective
@@ -65,3 +69,5 @@ Developer branch `agent/dev-004-doctor-ownership` at `6320c9f65fc08659b036a153d5
 Independent review of `eddb178f171a98738b018b65afff1a45298d068b` returned three blocking findings: contract-defined ownership metadata is missing for versions/audit references, authority-bearing owner fields can cross the mutation boundary, and active review-session results do not enforce a metadata-only PD-008 projection. DEV-004 is blocked pending focused remediation and independent re-review.
 
 Remediation commit `2a7c804d0e9ae3bd28411130df4416f910363a49` adds explicit internal authorization projections, sanitizes authority-bearing mutation fields before one atomic repository call, and restricts active review-session results to allow-listed metadata. Focused, backend, contracts, and full Node/Android/Wear validation passed. DEV-004 is `INTEGRATED` pending independent re-review.
+
+The independent re-review confirmed B1 and B2 resolved and B3 materially remediated, but found one residual blocker: allow-listed active-session metadata keys accepted arbitrary nested values. DEV-004 is blocked pending fail-closed scalar metadata validation and another independent review.
