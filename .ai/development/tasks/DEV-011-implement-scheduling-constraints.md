@@ -2,13 +2,14 @@
 id: DEV-011
 type: development
 title: Implement approved scheduling constraints
-status: PLANNED
+status: READY
 source: [PD-001, PD-003]
 depends_on: [DEV-002]
 parallel_class: SERIAL
 assigned_agent: null
 branch: null
 worktree: null
+updated_at: 2026-11-03T15:51:27Z
 ---
 
 # Objective
