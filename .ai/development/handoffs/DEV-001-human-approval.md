@@ -7,7 +7,9 @@ commit: 25c76a40aa6f4355cc1f1a22f379853052a41283
 human_approved_at: 2026-11-03T15:39:03Z
 approval_scope: HUMAN_TESTING
 merge_authorized_at: 2026-11-03T15:41:14Z
-merge_status: AUTHORIZED_PENDING
+merged_at: 2026-11-03T15:41:55Z
+merge_commit: aa1b7b2c7c11a107560d600eaee395befb4aa204
+merge_status: MERGED_LOCAL
 ---
 
 # Human approval — DEV-001
