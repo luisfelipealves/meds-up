@@ -7,7 +7,9 @@ base_commit: 58065b619d047a59c57e23679035c3de88d7b188
 developer_branch: agent/dev-004-doctor-ownership
 developer_head: 6320c9f65fc08659b036a153d51a79d2626bf36f
 implementation_commit: 5d0adfe4bd980e3706a58d00ca409bd2ca053dd0
-integration_commit: 7f540c698e0a2ca1c8981519fd3741fb6b6d06a6
+initial_integration_commit: 7f540c698e0a2ca1c8981519fd3741fb6b6d06a6
+integration_commit: 2a7c804d0e9ae3bd28411130df4416f910363a49
+remediation_commit: 2a7c804d0e9ae3bd28411130df4416f910363a49
 integrated_at: 2026-11-03T17:32:59Z
 validation_status: PASSED
 ready_for_review: true
@@ -42,10 +44,48 @@ The implementation introduces one provider-neutral authorization service, its pa
 
 The first focused test attempt before dependency installation failed with `ERR_MODULE_NOT_FOUND` for the workspace package `@medsup/contracts`; this was an integration-worktree prerequisite issue, not a product defect. A clean `npm ci` resolved it, after which focused and full validation passed.
 
+## Remediation evidence — independent review blockers B1–B3
+
+Remediation commit `2a7c804d0e9ae3bd28411130df4416f910363a49`
+addresses all three blocking findings from the first independent review.
+
+- **B1:** Every injected repository now returns an explicit internal
+  `{ record, authorization: { ownerDoctorId } }` projection. The projection is
+  validated server-side for active review sessions, confirmed prescriptions,
+  versions, audit references, and claim controls. Public version contracts
+  continue to use `confirmedByDoctorId`; audit references remain minimal and
+  do not gain invented public owner fields. Focused tests cover positive,
+  cross-doctor, missing, list, and mutation behavior for contract-shaped
+  version and audit records.
+- **B2:** Mutations recursively strip authority-bearing fields before the
+  repository boundary. Active-session content fields are stripped at the same
+  boundary. The service now performs one atomic `mutateByOwner` call with an
+  explicit `{ activeOnly }` policy and does not pre-read. An adversarial
+  side-effecting repository test proves forged ownership cannot cross the
+  boundary, cannot change the returned owner, and produces no side effect.
+- **B3:** Active review-session direct reads, lists, and mutation results use
+  the allow-listed metadata projection (`id`, `reviewSessionId`, `status`,
+  lifecycle timestamps). Sentinel document, raw OCR, and unconfirmed proposal
+  fields are absent from all returned values and are stripped from mutations.
+
+Strict TDD evidence: the new envelope/projection and adversarial tests were
+observed red against the prior service (B1 denied contract-shaped records; B2
+forwarded forged mutation fields; B3 returned no enforced projection), then
+passed after remediation. Current focused ownership, backend, contracts,
+syntax, lint, static, Node build, and `git diff --check` validation pass.
+
+Coordinator verification reran the focused ownership suite (6/6), complete
+backend suite (23/23), contracts suite (13/13), syntax checks, and
+`git diff --check`. It then ran the full repository validator with the
+configured Android SDK; all Node/PWA/contracts checks and all eight Android and
+Wear assemble, unit-test, lint, and check commands passed. The remediation is
+therefore integrated and ready for independent re-review. No merge, push,
+self-review, or DEV-005 work occurred.
+
 ## Known issues
 
 None in DEV-004 scope. Concrete repositories, transport handlers, persistence, claim-token lifecycle, and review-session ingestion remain later-task responsibilities. Adapters must keep ownership metadata server-controlled, make `mutateByOwner` atomic, and must not persist or expose ephemeral document/OCR/proposal payloads.
 
 ## Review target
 
-Independently review the complete diff from base `58065b619d047a59c57e23679035c3de88d7b188` through integration commit `7f540c698e0a2ca1c8981519fd3741fb6b6d06a6`, together with this integration record. DEV-004 must not advance beyond `INTEGRATED` until that review completes.
+Independently review the complete diff from base `58065b619d047a59c57e23679035c3de88d7b188` through remediation commit `2a7c804d0e9ae3bd28411130df4416f910363a49`, together with this integration record and the first review. DEV-004 must not advance beyond `INTEGRATED` until re-review completes.
