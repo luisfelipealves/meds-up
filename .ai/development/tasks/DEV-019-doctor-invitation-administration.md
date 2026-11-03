@@ -2,13 +2,14 @@
 id: DEV-019
 type: development
 title: Implement doctor invitation administration
-status: PLANNED
+status: READY
 source: [PD-001, PD-004]
 depends_on: [DEV-003]
 parallel_class: SERIAL
 assigned_agent: null
 branch: null
 worktree: null
+updated_at: 2026-11-03T15:50:44Z
 ---
 
 # Objective
