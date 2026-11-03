@@ -2,7 +2,7 @@
 id: DEV-004
 type: development
 title: Enforce doctor ownership isolation
-status: INTEGRATED
+status: HUMAN_TESTING
 source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-003]
 parallel_class: SERIAL
@@ -10,7 +10,7 @@ assigned_agent: developer-dev-004
 branch: agent/dev-004-doctor-ownership
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-004-doctor-ownership
 started_at: 2026-11-03T17:28:46Z
-updated_at: 2026-11-03T17:48:02Z
+updated_at: 2026-11-03T17:49:45Z
 completed_at: 2026-11-03T17:31:14Z
 commit: 5d0adfe4bd980e3706a58d00ca409bd2ca053dd0
 handoff: .ai/development/handoffs/DEV-004-developer-handoff.md
@@ -36,6 +36,13 @@ second_final_review: .ai/reviews/DEV-004-independent-second-final-review.md
 second_final_review_status: CHANGES_REQUIRED
 second_final_reviewed_code_commit: e10082da77acb3b853b9c00d6fbcbe54beb8e501
 second_final_review_blocking_findings: 1
+approved_review: .ai/reviews/DEV-004-independent-approved-review.md
+approved_review_commit: ccd6d812510a4bbdf0dea021d098182801db8351
+approved_review_status: PASS
+approved_review_blocking_findings: 0
+approved_review_non_blocking_findings: 0
+human_testing_handoff: .ai/development/handoffs/DEV-004-human-testing.md
+merge_status: NOT_MERGED_HUMAN_GATE
 ---
 
 # Objective
@@ -94,3 +101,9 @@ identifiers to the generated `review_session_` plus 32 lowercase-hex format and
 adds get/list/mutation tests for sensitive scalar identifiers. Focused,
 backend, contracts, and full Node/Android/Wear validation passed. DEV-004 is
 `INTEGRATED` pending independent review; no approval is claimed.
+
+Independent final review at
+`.ai/reviews/DEV-004-independent-approved-review.md` passed with zero blocking
+and zero non-blocking findings. Because DEV-004 changes the authorization policy
+used to isolate real doctor-owned records, the dev-team Autonomy Policy reserves
+merge approval to a human. DEV-004 is in `HUMAN_TESTING` and is not merged.

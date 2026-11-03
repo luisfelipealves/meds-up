@@ -15,6 +15,9 @@ identifier_validation_commit: 329d5f183eb8fdf960d506a68c97cf3a940b49b2
 integrated_at: 2026-11-03T17:32:59Z
 validation_status: PASSED
 ready_for_review: true
+approved_review: .ai/reviews/DEV-004-independent-approved-review.md
+approved_review_commit: ccd6d812510a4bbdf0dea021d098182801db8351
+review_status: PASS
 ---
 
 # Integration handoff — DEV-004
@@ -112,3 +115,9 @@ passed again.
 ## Review target
 
 Independently review the complete diff from base `58065b619d047a59c57e23679035c3de88d7b188` through identifier-validation commit `329d5f183eb8fdf960d506a68c97cf3a940b49b2`, together with this integration record and all prior reviews. DEV-004 must not advance beyond `INTEGRATED` until re-review completes.
+
+Independent final review passed at
+`ccd6d812510a4bbdf0dea021d098182801db8351` with zero findings. The task is
+routed to `HUMAN_TESTING` rather than autonomous merge because it changes the
+authorization policy for doctor-owned records, a reserved human gate under the
+dev-team Autonomy Policy.
