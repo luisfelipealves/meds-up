@@ -2,7 +2,7 @@
 id: DEV-004
 type: development
 title: Enforce doctor ownership isolation
-status: BLOCKED
+status: INTEGRATED
 source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-003]
 parallel_class: SERIAL
@@ -10,15 +10,16 @@ assigned_agent: developer-dev-004
 branch: agent/dev-004-doctor-ownership
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-004-doctor-ownership
 started_at: 2026-11-03T17:28:46Z
-updated_at: 2026-11-03T17:40:33Z
+updated_at: 2026-11-03T17:44:13Z
 completed_at: 2026-11-03T17:31:14Z
 commit: 5d0adfe4bd980e3706a58d00ca409bd2ca053dd0
 handoff: .ai/development/handoffs/DEV-004-developer-handoff.md
 integration_branch: agent/integration-dev-004
 integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-004
 initial_integration_commit: 7f540c698e0a2ca1c8981519fd3741fb6b6d06a6
-integration_commit: 2a7c804d0e9ae3bd28411130df4416f910363a49
+integration_commit: e10082da77acb3b853b9c00d6fbcbe54beb8e501
 remediation_commit: 2a7c804d0e9ae3bd28411130df4416f910363a49
+metadata_validation_commit: e10082da77acb3b853b9c00d6fbcbe54beb8e501
 integrated_at: 2026-11-03T17:32:59Z
 integration_handoff: .ai/development/integration/DEV-004-integration-handoff.md
 integration_validation: PASSED
@@ -30,6 +31,7 @@ final_review: .ai/reviews/DEV-004-independent-final-review.md
 final_reviewed_code_commit: 2a7c804d0e9ae3bd28411130df4416f910363a49
 final_review_status: CHANGES_REQUIRED
 final_review_blocking_findings: 1
+second_final_review_status: PENDING
 ---
 
 # Objective
@@ -71,3 +73,10 @@ Independent review of `eddb178f171a98738b018b65afff1a45298d068b` returned three 
 Remediation commit `2a7c804d0e9ae3bd28411130df4416f910363a49` adds explicit internal authorization projections, sanitizes authority-bearing mutation fields before one atomic repository call, and restricts active review-session results to allow-listed metadata. Focused, backend, contracts, and full Node/Android/Wear validation passed. DEV-004 is `INTEGRATED` pending independent re-review.
 
 The independent re-review confirmed B1 and B2 resolved and B3 materially remediated, but found one residual blocker: allow-listed active-session metadata keys accepted arbitrary nested values. DEV-004 is blocked pending fail-closed scalar metadata validation and another independent review.
+
+Residual B4 is remediated by `e10082da77acb3b853b9c00d6fbcbe54beb8e501`.
+Retained active-session metadata now requires bounded scalar identifiers,
+allow-listed status, and valid optional timestamps; malformed values fail
+closed without echoing content. Focused ownership (7/7), backend (24/24),
+contracts (13/13), and full Node/Android/Wear validation passed. DEV-004 is
+`INTEGRATED` pending another independent review; no approval is claimed.

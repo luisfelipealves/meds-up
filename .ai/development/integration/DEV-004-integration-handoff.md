@@ -1,6 +1,6 @@
 ---
 task: DEV-004
-status: INTEGRATED
+status: BLOCKED
 integration_branch: agent/integration-dev-004
 integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-004
 base_commit: 58065b619d047a59c57e23679035c3de88d7b188
@@ -8,8 +8,9 @@ developer_branch: agent/dev-004-doctor-ownership
 developer_head: 6320c9f65fc08659b036a153d51a79d2626bf36f
 implementation_commit: 5d0adfe4bd980e3706a58d00ca409bd2ca053dd0
 initial_integration_commit: 7f540c698e0a2ca1c8981519fd3741fb6b6d06a6
-integration_commit: 2a7c804d0e9ae3bd28411130df4416f910363a49
+integration_commit: e10082da77acb3b853b9c00d6fbcbe54beb8e501
 remediation_commit: 2a7c804d0e9ae3bd28411130df4416f910363a49
+metadata_validation_commit: e10082da77acb3b853b9c00d6fbcbe54beb8e501
 integrated_at: 2026-11-03T17:32:59Z
 validation_status: PASSED
 ready_for_review: true
@@ -84,8 +85,21 @@ self-review, or DEV-005 work occurred.
 
 ## Known issues
 
-None in DEV-004 scope. Concrete repositories, transport handlers, persistence, claim-token lifecycle, and review-session ingestion remain later-task responsibilities. Adapters must keep ownership metadata server-controlled, make `mutateByOwner` atomic, and must not persist or expose ephemeral document/OCR/proposal payloads.
+Residual B4 is remediated by
+`e10082da77acb3b853b9c00d6fbcbe54beb8e501`. The service validates retained
+active-session identifiers, status, and optional timestamps as bounded scalar
+metadata and fails closed with content-free `NOT_FOUND` across get, list, and
+mutation results. Adversarial tests cover nested objects, arrays, invalid
+scalars, and document/raw OCR/AI/unconfirmed-proposal sentinels. Recursive
+mutation sanitization and the single atomic `mutateByOwner` call are unchanged;
+no DEV-005 surface was added.
+
+Coordinator verification passed the focused ownership suite (7/7), backend
+suite (24/24), contracts suite (13/13), syntax checks, `git diff --check`, and
+the complete repository validator, including all Node/PWA/contracts checks and
+all eight Android/Wear assemble, unit-test, lint, and check commands. The task
+is integrated and ready for another independent review; no approval is claimed.
 
 ## Review target
 
-Independently review the complete diff from base `58065b619d047a59c57e23679035c3de88d7b188` through remediation commit `2a7c804d0e9ae3bd28411130df4416f910363a49`, together with this integration record and the first review. DEV-004 must not advance beyond `INTEGRATED` until re-review completes.
+Independently review the complete diff from base `58065b619d047a59c57e23679035c3de88d7b188` through metadata-validation commit `e10082da77acb3b853b9c00d6fbcbe54beb8e501`, together with this integration record and both prior reviews. DEV-004 must not advance beyond `INTEGRATED` until re-review completes.
