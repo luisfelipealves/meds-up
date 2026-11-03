@@ -6,50 +6,35 @@ import { createDoctorOwnershipService } from "../src/authorization/doctor-owners
 import { createDeterministicIdentityHarness } from "./support/deterministic-identity-harness.mjs";
 
 const IDENTITIES = Object.freeze({
-  DOCTOR_A: Object.freeze({
-    subjectId: "doctor-owner-0001",
-    role: ROLES.DOCTOR,
-    credential: Object.freeze({ login: "doctor-a@example.invalid", secret: "doctor-a-test-secret" }),
-  }),
-  DOCTOR_B: Object.freeze({
-    subjectId: "doctor-owner-0002",
-    role: ROLES.DOCTOR,
-    credential: Object.freeze({ login: "doctor-b@example.invalid", secret: "doctor-b-test-secret" }),
-  }),
+  DOCTOR_A: Object.freeze({ subjectId: "doctor-owner-0001", role: ROLES.DOCTOR, credential: Object.freeze({ login: "doctor-a@example.invalid", secret: "doctor-a-test-secret" }) }),
+  DOCTOR_B: Object.freeze({ subjectId: "doctor-owner-0002", role: ROLES.DOCTOR, credential: Object.freeze({ login: "doctor-b@example.invalid", secret: "doctor-b-test-secret" }) }),
 });
 
-function createOwnedRepository(records) {
-  const items = new Map(records.map((record) => [record.id, structuredClone(record)]));
+function projection(record, ownerDoctorId) {
+  return { record: structuredClone(record), authorization: { ownerDoctorId } };
+}
+
+function entry(record, ownerDoctorId) { return { record, ownerDoctorId }; }
+
+function createOwnedRepository(entries) {
+  const items = new Map(entries.map(({ record, ownerDoctorId }) => [record.id ?? record.prescriptionId ?? record.auditReferenceId, projection(record, ownerDoctorId)]));
   return Object.freeze({
-    getById(id) {
-      const value = items.get(id);
-      return value === undefined ? null : structuredClone(value);
-    },
-    listByOwner(ownerDoctorId) {
-      return [...items.values()]
-        .filter((item) => item.ownerDoctorId === ownerDoctorId)
-        .map((item) => structuredClone(item));
-    },
-    mutateByOwner(id, ownerDoctorId, mutation) {
+    getById(id) { const value = items.get(id); return value === undefined ? null : structuredClone(value); },
+    listByOwner(ownerDoctorId) { return [...items.values()].filter((item) => item.authorization.ownerDoctorId === ownerDoctorId).map((item) => structuredClone(item)); },
+    mutateByOwner(id, ownerDoctorId, mutation, options = {}) {
       const current = items.get(id);
-      if (current === undefined || current.ownerDoctorId !== ownerDoctorId) return null;
-      const updated = { ...current, ...structuredClone(mutation), ownerDoctorId };
-      items.set(id, updated);
-      return structuredClone(updated);
+      if (current === undefined || current.authorization.ownerDoctorId !== ownerDoctorId) return null;
+      if (options.activeOnly && current.record.status !== "ACTIVE") return null;
+      const updated = { ...current.record, ...structuredClone(mutation) };
+      items.set(id, projection(updated, ownerDoctorId));
+      return structuredClone(items.get(id));
     },
   });
 }
 
 function repositories(overrides = {}) {
   const empty = () => createOwnedRepository([]);
-  return {
-    activeReviewSessions: empty(),
-    confirmedPrescriptions: empty(),
-    prescriptionVersions: empty(),
-    auditReferences: empty(),
-    claimControls: empty(),
-    ...overrides,
-  };
+  return { activeReviewSessions: empty(), confirmedPrescriptions: empty(), prescriptionVersions: empty(), auditReferences: empty(), claimControls: empty(), ...overrides };
 }
 
 async function fixture(overrides = {}) {
@@ -57,143 +42,84 @@ async function fixture(overrides = {}) {
   return {
     doctorA: await authority.authenticate(IDENTITIES.DOCTOR_A.credential),
     doctorB: await authority.authenticate(IDENTITIES.DOCTOR_B.credential),
-    service: createDoctorOwnershipService({
-      assertAuthenticatedSubject: authority.assertAuthenticatedSubject,
-      repositories: repositories(overrides),
-    }),
+    service: createDoctorOwnershipService({ assertAuthenticatedSubject: authority.assertAuthenticatedSubject, repositories: repositories(overrides) }),
   };
 }
 
-test("cross-doctor direct prescription identifiers use the same content-free NOT_FOUND as missing identifiers", async () => {
-  const prescription = {
-    id: "prescription_0000000002",
-    ownerDoctorId: IDENTITIES.DOCTOR_B.subjectId,
-    status: "ACTIVE",
-  };
-  const { doctorA, service } = await fixture({
-    confirmedPrescriptions: createOwnedRepository([prescription]),
-  });
+const notFound = { code: "NOT_FOUND", message: "The resource was not found." };
 
-  for (const id of [prescription.id, "prescription_missing_0000"]) {
-    assert.throws(
-      () => service.getConfirmedPrescription(doctorA, id),
-      {
-        code: "NOT_FOUND",
-        message: "The resource was not found.",
-      },
-    );
+test("contract-shaped versions and audit references use explicit internal authorization projections", async () => {
+  const version = { id: "version_000000000001", apiVersion: "v1", schemaVersion: 1, lifecycle: "DOCTOR_CONFIRMED_VERSION", prescriptionId: "prescription_00000001", prescriptionVersion: 1, resourceVersion: 1, confirmedByDoctorId: IDENTITIES.DOCTOR_A.subjectId, confirmedAt: "2026-11-03T15:50:00Z", createdAt: "2026-11-03T15:50:00Z", clinicalContent: { medications: [{ medicationName: "Example", dose: "1 tablet" }] } };
+  const audit = { id: "audit_reference_00001", apiVersion: "v1", schemaVersion: 1, auditReferenceId: "audit_reference_00001", eventType: "DOCTOR_CONFIRMATION", outcome: "COMPLETED", occurredAt: "2026-11-03T15:50:00Z", securityCorrelationId: "correlation_0000001" };
+  const { doctorA, service } = await fixture({ prescriptionVersions: createOwnedRepository([entry(version, IDENTITIES.DOCTOR_A.subjectId)]), auditReferences: createOwnedRepository([entry(audit, IDENTITIES.DOCTOR_A.subjectId)]) });
+  assert.deepEqual(service.getPrescriptionVersion(doctorA, version.id), version);
+  assert.deepEqual(service.getAuditReference(doctorA, audit.id), audit);
+  assert.deepEqual(service.listPrescriptionVersions(doctorA), [version]);
+  assert.deepEqual(service.listAuditReferences(doctorA), [audit]);
+  assert.deepEqual(service.mutatePrescriptionVersion(doctorA, version.id, { resourceVersion: 2 }), { ...version, resourceVersion: 2 });
+  assert.deepEqual(service.mutateAuditReference(doctorA, audit.id, { outcome: "DENIED" }), { ...audit, outcome: "DENIED" });
+});
+
+test("cross-doctor direct identifiers and missing identifiers share content-free NOT_FOUND", async () => {
+  const records = [["ActiveReviewSession", "activeReviewSessions", { id: "review_session_00000002", status: "ACTIVE" }], ["ConfirmedPrescription", "confirmedPrescriptions", { id: "prescription_00000002" }], ["PrescriptionVersion", "prescriptionVersions", { id: "version_000000000002", prescriptionId: "prescription_00000002", confirmedByDoctorId: IDENTITIES.DOCTOR_B.subjectId }], ["AuditReference", "auditReferences", { id: "audit_reference_00002", auditReferenceId: "audit_reference_00002" }], ["ClaimControl", "claimControls", { id: "claim_control_000002" }]];
+  const overrides = Object.fromEntries(records.map(([, repositoryName, record]) => [repositoryName, createOwnedRepository([entry(record, IDENTITIES.DOCTOR_B.subjectId)])]));
+  const { doctorA, service } = await fixture(overrides);
+  for (const [resourceName, , record] of records) {
+    for (const operation of [() => service[`get${resourceName}`](doctorA, record.id), () => service[`mutate${resourceName}`](doctorA, record.id, { status: "REVOKED" })]) assert.throws(operation, notFound);
+    assert.throws(() => service[`get${resourceName}`](doctorA, "missing-resource-0000"), notFound);
   }
 });
 
-test("doctor lists include only owned resources and only active review sessions", async () => {
-  const owned = (id, ownerDoctorId, extra = {}) => ({ id, ownerDoctorId, ...extra });
+test("lists are owner-scoped and active sessions return metadata only", async () => {
+  const sentinel = "SENTINEL_MUST_NOT_ESCAPE";
   const resources = {
-    activeReviewSessions: [
-      owned("review_session_00000001", IDENTITIES.DOCTOR_A.subjectId, { status: "ACTIVE" }),
-      owned("review_session_00000002", IDENTITIES.DOCTOR_B.subjectId, { status: "ACTIVE" }),
-      owned("review_session_00000003", IDENTITIES.DOCTOR_A.subjectId, { status: "EXPIRED" }),
-    ],
-    confirmedPrescriptions: [
-      owned("prescription_00000001", IDENTITIES.DOCTOR_A.subjectId),
-      owned("prescription_00000002", IDENTITIES.DOCTOR_B.subjectId),
-    ],
-    prescriptionVersions: [
-      owned("version_000000000001", IDENTITIES.DOCTOR_A.subjectId),
-      owned("version_000000000002", IDENTITIES.DOCTOR_B.subjectId),
-    ],
-    auditReferences: [
-      owned("audit_reference_00001", IDENTITIES.DOCTOR_A.subjectId),
-      owned("audit_reference_00002", IDENTITIES.DOCTOR_B.subjectId),
-    ],
-    claimControls: [
-      owned("claim_control_000001", IDENTITIES.DOCTOR_A.subjectId),
-      owned("claim_control_000002", IDENTITIES.DOCTOR_B.subjectId),
-    ],
+    activeReviewSessions: [entry({ id: "review_session_00000001", status: "ACTIVE", createdAt: "2026-11-03T15:00:00Z", document: sentinel, rawOcr: sentinel, unconfirmedProposal: sentinel }, IDENTITIES.DOCTOR_A.subjectId), entry({ id: "review_session_00000002", status: "ACTIVE" }, IDENTITIES.DOCTOR_B.subjectId), entry({ id: "review_session_00000003", status: "EXPIRED" }, IDENTITIES.DOCTOR_A.subjectId)],
+    confirmedPrescriptions: [entry({ id: "prescription_00000001" }, IDENTITIES.DOCTOR_A.subjectId), entry({ id: "prescription_00000002" }, IDENTITIES.DOCTOR_B.subjectId)],
+    prescriptionVersions: [entry({ id: "version_000000000001", confirmedByDoctorId: IDENTITIES.DOCTOR_A.subjectId }, IDENTITIES.DOCTOR_A.subjectId), entry({ id: "version_000000000002" }, IDENTITIES.DOCTOR_B.subjectId)],
+    auditReferences: [entry({ id: "audit_reference_00001", auditReferenceId: "audit_reference_00001" }, IDENTITIES.DOCTOR_A.subjectId), entry({ id: "audit_reference_00002", auditReferenceId: "audit_reference_00002" }, IDENTITIES.DOCTOR_B.subjectId)],
+    claimControls: [entry({ id: "claim_control_000001" }, IDENTITIES.DOCTOR_A.subjectId), entry({ id: "claim_control_000002" }, IDENTITIES.DOCTOR_B.subjectId)],
   };
-  const { doctorA, service } = await fixture(Object.fromEntries(
-    Object.entries(resources).map(([name, records]) => [name, createOwnedRepository(records)]),
-  ));
-
-  assert.deepEqual(service.listActiveReviewSessions(doctorA).map(({ id }) => id), ["review_session_00000001"]);
+  const { doctorA, service } = await fixture(Object.fromEntries(Object.entries(resources).map(([name, records]) => [name, createOwnedRepository(records)])));
+  assert.deepEqual(service.listActiveReviewSessions(doctorA), [{ id: "review_session_00000001", status: "ACTIVE", createdAt: "2026-11-03T15:00:00Z" }]);
+  assert.equal(JSON.stringify(service.listActiveReviewSessions(doctorA)).includes(sentinel), false);
   assert.deepEqual(service.listConfirmedPrescriptions(doctorA).map(({ id }) => id), ["prescription_00000001"]);
   assert.deepEqual(service.listPrescriptionVersions(doctorA).map(({ id }) => id), ["version_000000000001"]);
   assert.deepEqual(service.listAuditReferences(doctorA).map(({ id }) => id), ["audit_reference_00001"]);
   assert.deepEqual(service.listClaimControls(doctorA).map(({ id }) => id), ["claim_control_000001"]);
 });
 
-test("every covered direct read and mutation denies cross-doctor identifiers without revealing existence", async () => {
-  const cases = [
-    ["ActiveReviewSession", "activeReviewSessions", { id: "review_session_00000002", status: "ACTIVE" }],
-    ["ConfirmedPrescription", "confirmedPrescriptions", { id: "prescription_00000002" }],
-    ["PrescriptionVersion", "prescriptionVersions", { id: "version_000000000002" }],
-    ["AuditReference", "auditReferences", { id: "audit_reference_00002" }],
-    ["ClaimControl", "claimControls", { id: "claim_control_000002" }],
-  ];
-  const overrides = Object.fromEntries(cases.map(([, repositoryName, record]) => [
-    repositoryName,
-    createOwnedRepository([{ ...record, ownerDoctorId: IDENTITIES.DOCTOR_B.subjectId }]),
-  ]));
-  const { doctorA, service } = await fixture(overrides);
-
-  for (const [resourceName, , record] of cases) {
-    for (const operation of [
-      () => service[`get${resourceName}`](doctorA, record.id),
-      () => service[`mutate${resourceName}`](doctorA, record.id, { status: "REVOKED" }),
-    ]) {
-      assert.throws(operation, {
-        code: "NOT_FOUND",
-        message: "The resource was not found.",
-      });
-    }
-  }
+test("mutation strips forged ownership and session payload fields before one atomic repository call", async () => {
+  const received = [];
+  let sideEffects = 0;
+  const repository = Object.freeze({
+    getById: () => projection({ id: "review_session_00000001", status: "ACTIVE" }, IDENTITIES.DOCTOR_A.subjectId),
+    listByOwner: () => [],
+    mutateByOwner: (id, ownerDoctorId, mutation, options) => {
+      received.push({ id, ownerDoctorId, mutation, options });
+      if (mutation.ownerDoctorId || mutation.confirmedByDoctorId || mutation.document || mutation.rawOcr || mutation.unconfirmedProposal) { sideEffects += 1; return projection({ id, status: "ACTIVE" }, IDENTITIES.DOCTOR_B.subjectId); }
+      return projection({ id, status: mutation.status }, ownerDoctorId);
+    },
+  });
+  const { doctorA, service } = await fixture({ activeReviewSessions: repository });
+  const updated = service.mutateActiveReviewSession(doctorA, "review_session_00000001", { status: "COMPLETED", ownerDoctorId: IDENTITIES.DOCTOR_B.subjectId, confirmedByDoctorId: IDENTITIES.DOCTOR_B.subjectId, document: "SENTINEL_DOCUMENT", rawOcr: "SENTINEL_OCR", unconfirmedProposal: "SENTINEL_PROPOSAL" });
+  assert.deepEqual(updated, { id: "review_session_00000001", status: "COMPLETED" });
+  assert.equal(sideEffects, 0);
+  assert.deepEqual(received, [{ id: "review_session_00000001", ownerDoctorId: IDENTITIES.DOCTOR_A.subjectId, mutation: { status: "COMPLETED" }, options: { activeOnly: true } }]);
 });
 
-test("owned mutations cannot transfer ownership and inactive review sessions are content-free NOT_FOUND", async () => {
-  const session = {
-    id: "review_session_00000001",
-    ownerDoctorId: IDENTITIES.DOCTOR_A.subjectId,
-    status: "ACTIVE",
-  };
-  const expired = {
-    id: "review_session_00000003",
-    ownerDoctorId: IDENTITIES.DOCTOR_A.subjectId,
-    status: "EXPIRED",
-  };
-  const { doctorA, service } = await fixture({
-    activeReviewSessions: createOwnedRepository([session, expired]),
-  });
-
-  const updated = service.mutateActiveReviewSession(doctorA, session.id, {
-    status: "COMPLETED",
-    ownerDoctorId: IDENTITIES.DOCTOR_B.subjectId,
-  });
-  assert.equal(updated.ownerDoctorId, IDENTITIES.DOCTOR_A.subjectId);
-  assert.equal(updated.status, "COMPLETED");
-  assert.throws(() => service.getActiveReviewSession(doctorA, expired.id), {
-    code: "NOT_FOUND",
-    message: "The resource was not found.",
-  });
+test("owned records preserve atomic mutateByOwner and inactive sessions remain NOT_FOUND", async () => {
+  const active = { id: "review_session_00000001", status: "ACTIVE" };
+  const expired = { id: "review_session_00000003", status: "EXPIRED" };
+  const { doctorA, service } = await fixture({ activeReviewSessions: createOwnedRepository([entry(active, IDENTITIES.DOCTOR_A.subjectId), entry(expired, IDENTITIES.DOCTOR_A.subjectId)]) });
+  assert.deepEqual(service.mutateActiveReviewSession(doctorA, active.id, { status: "COMPLETED" }), { ...active, status: "COMPLETED" });
+  assert.throws(() => service.mutateActiveReviewSession(doctorA, expired.id, { status: "COMPLETED" }), notFound);
 });
 
-test("ownership API requires injected authenticated doctor subjects and exposes no reminder-history query", async () => {
-  const authority = createDeterministicIdentityHarness({
-    ...IDENTITIES,
-    PATIENT: Object.freeze({
-      subjectId: "patient-test-000001",
-      role: ROLES.PATIENT,
-      credential: Object.freeze({ login: "patient@example.invalid", secret: "patient-test-secret" }),
-    }),
-  });
+test("ownership API requires trusted authenticated doctor subjects and exposes no reminder-history query", async () => {
+  const authority = createDeterministicIdentityHarness({ ...IDENTITIES, PATIENT: Object.freeze({ subjectId: "patient-test-000001", role: ROLES.PATIENT, credential: Object.freeze({ login: "patient@example.invalid", secret: "patient-test-secret" }) }) });
   const patient = await authority.authenticate({ login: "patient@example.invalid", secret: "patient-test-secret" });
-  const service = createDoctorOwnershipService({
-    assertAuthenticatedSubject: authority.assertAuthenticatedSubject,
-    repositories: repositories(),
-  });
-
+  const service = createDoctorOwnershipService({ assertAuthenticatedSubject: authority.assertAuthenticatedSubject, repositories: repositories() });
   assert.throws(() => service.listConfirmedPrescriptions(patient), { code: "ROLE_FORBIDDEN" });
-  assert.throws(
-    () => service.listConfirmedPrescriptions({ subjectId: IDENTITIES.DOCTOR_A.subjectId, role: ROLES.DOCTOR }),
-    { code: "INVALID_AUTHENTICATED_SUBJECT" },
-  );
+  assert.throws(() => service.listConfirmedPrescriptions({ subjectId: IDENTITIES.DOCTOR_A.subjectId, role: ROLES.DOCTOR }), { code: "INVALID_AUTHENTICATED_SUBJECT" });
   assert.equal(Object.keys(service).some((name) => /reminder|history|adherence/i.test(name)), false);
 });
