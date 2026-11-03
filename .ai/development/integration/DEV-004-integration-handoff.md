@@ -8,9 +8,10 @@ developer_branch: agent/dev-004-doctor-ownership
 developer_head: 6320c9f65fc08659b036a153d51a79d2626bf36f
 implementation_commit: 5d0adfe4bd980e3706a58d00ca409bd2ca053dd0
 initial_integration_commit: 7f540c698e0a2ca1c8981519fd3741fb6b6d06a6
-integration_commit: e10082da77acb3b853b9c00d6fbcbe54beb8e501
+integration_commit: 329d5f183eb8fdf960d506a68c97cf3a940b49b2
 remediation_commit: 2a7c804d0e9ae3bd28411130df4416f910363a49
 metadata_validation_commit: e10082da77acb3b853b9c00d6fbcbe54beb8e501
+identifier_validation_commit: 329d5f183eb8fdf960d506a68c97cf3a940b49b2
 integrated_at: 2026-11-03T17:32:59Z
 validation_status: PASSED
 ready_for_review: true
@@ -100,6 +101,14 @@ the complete repository validator, including all Node/PWA/contracts checks and
 all eight Android/Wear assemble, unit-test, lint, and check commands. The task
 is integrated and ready for another independent review; no approval is claimed.
 
+The second final review found that generic identifier-shaped sensitive strings
+could still pass as active-session metadata. Commit
+`329d5f183eb8fdf960d506a68c97cf3a940b49b2` constrains both active-session
+identifier fields to the generated `review_session_` plus 32 lowercase-hex
+format and adds get/list/mutation adversarial coverage for sensitive scalar
+identifiers. Focused, backend, contracts, and full Node/Android/Wear validation
+passed again.
+
 ## Review target
 
-Independently review the complete diff from base `58065b619d047a59c57e23679035c3de88d7b188` through metadata-validation commit `e10082da77acb3b853b9c00d6fbcbe54beb8e501`, together with this integration record and both prior reviews. DEV-004 must not advance beyond `INTEGRATED` until re-review completes.
+Independently review the complete diff from base `58065b619d047a59c57e23679035c3de88d7b188` through identifier-validation commit `329d5f183eb8fdf960d506a68c97cf3a940b49b2`, together with this integration record and all prior reviews. DEV-004 must not advance beyond `INTEGRATED` until re-review completes.
