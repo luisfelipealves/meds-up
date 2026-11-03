@@ -129,6 +129,37 @@ test("schema fixtures match executable validators for every published contract",
   }
 });
 
+test("every safe-integer schema field matches runtime at the maximum boundary", async () => {
+  const { schema, ajv } = await loadSchemaValidator();
+  const maximum = Number.MAX_SAFE_INTEGER;
+  const reviewSessionId = "rvs_01JBR4N9V2Q8K6M3F7X5T1C0AZ";
+  const doctorId = "doc_01JBR5V9A7E2K8N4Q6M0T3X1CZ";
+  const prescriptionId = "rx_01JBR67EDW4A9T2N8M5KQ3X0CZ";
+  const clinicalContent = { medications: [{ medicationName: "Example medicine", dose: "1 tablet" }] };
+  const fixtures = [
+    ["EphemeralDocumentInput", "byteLength", { apiVersion: "v1", schemaVersion: 1, reviewSessionId, mediaType: "application/pdf", byteLength: 1 }, validateEphemeralDocumentInput],
+    ["ConfirmedPrescription", "currentPrescriptionVersion", { apiVersion: "v1", schemaVersion: 1, lifecycle: "DOCTOR_CONFIRMED", prescriptionId, ownerDoctorId: doctorId, patientAssociationId: null, status: "ACTIVE", currentPrescriptionVersion: 1, resourceVersion: 1, createdAt: "2026-11-03T15:50:00Z", updatedAt: "2026-11-03T15:50:00Z" }, validateConfirmedPrescription],
+    ["ConfirmedPrescription", "resourceVersion", { apiVersion: "v1", schemaVersion: 1, lifecycle: "DOCTOR_CONFIRMED", prescriptionId, ownerDoctorId: doctorId, patientAssociationId: null, status: "ACTIVE", currentPrescriptionVersion: 1, resourceVersion: 1, createdAt: "2026-11-03T15:50:00Z", updatedAt: "2026-11-03T15:50:00Z" }, validateConfirmedPrescription],
+    ["PrescriptionVersion", "prescriptionVersion", { apiVersion: "v1", schemaVersion: 1, lifecycle: "DOCTOR_CONFIRMED_VERSION", prescriptionId, prescriptionVersion: 1, resourceVersion: 1, confirmedByDoctorId: doctorId, confirmedAt: "2026-11-03T15:50:00Z", createdAt: "2026-11-03T15:50:00Z", clinicalContent }, validatePrescriptionVersion],
+    ["PrescriptionVersion", "resourceVersion", { apiVersion: "v1", schemaVersion: 1, lifecycle: "DOCTOR_CONFIRMED_VERSION", prescriptionId, prescriptionVersion: 1, resourceVersion: 1, confirmedByDoctorId: doctorId, confirmedAt: "2026-11-03T15:50:00Z", createdAt: "2026-11-03T15:50:00Z", clinicalContent }, validatePrescriptionVersion],
+    ["PrescriptionStatusCommand", "expectedResourceVersion", { apiVersion: "v1", schemaVersion: 1, idempotencyKey: "idem_01JBR6D8P4N7X2K9M5Q0T3V1AZ", prescriptionId, ownerDoctorId: doctorId, expectedResourceVersion: 1, targetStatus: "SUSPENDED", requestedAt: "2026-11-03T16:00:00Z" }, validatePrescriptionStatusCommand],
+    ["PrescriptionStatusEvent", "prescriptionVersion", { apiVersion: "v1", schemaVersion: 1, eventId: "evt_01JBR6G2X8M4K7N1Q5T9V3P0AZ", prescriptionId, prescriptionVersion: 1, previousStatus: "ACTIVE", status: "SUSPENDED", resourceVersion: 2, serverVersion: 1, occurredAt: "2026-11-03T16:00:01Z" }, validatePrescriptionStatusEvent],
+    ["PrescriptionStatusEvent", "resourceVersion", { apiVersion: "v1", schemaVersion: 1, eventId: "evt_01JBR6G2X8M4K7N1Q5T9V3P0AZ", prescriptionId, prescriptionVersion: 1, previousStatus: "ACTIVE", status: "SUSPENDED", resourceVersion: 2, serverVersion: 1, occurredAt: "2026-11-03T16:00:01Z" }, validatePrescriptionStatusEvent],
+    ["PrescriptionStatusEvent", "serverVersion", { apiVersion: "v1", schemaVersion: 1, eventId: "evt_01JBR6G2X8M4K7N1Q5T9V3P0AZ", prescriptionId, prescriptionVersion: 1, previousStatus: "ACTIVE", status: "SUSPENDED", resourceVersion: 2, serverVersion: 1, occurredAt: "2026-11-03T16:00:01Z" }, validatePrescriptionStatusEvent],
+  ];
+
+  for (const [definition, field, fixture, validateRuntime] of fixtures) {
+    const validateSchema = ajv.getSchema(`${schema.$id}#/$defs/${definition}`);
+    const accepted = { ...fixture, [field]: maximum };
+    assert.equal(validateSchema(accepted), true, `${definition}.${field} schema rejected max safe integer`);
+    assert.equal(validateRuntime(accepted), accepted, `${definition}.${field} runtime rejected max safe integer`);
+
+    const rejected = { ...fixture, [field]: maximum + 1 };
+    assert.equal(validateSchema(rejected), false, `${definition}.${field} schema accepted unsafe integer`);
+    assert.throws(() => validateRuntime(rejected), `${definition}.${field} runtime accepted unsafe integer`);
+  }
+});
+
 test("error schema accepts exactly every canonical runtime tuple", async () => {
   const { schema, ajv } = await loadSchemaValidator();
   const validateSchema = ajv.getSchema(`${schema.$id}#/$defs/ErrorEnvelope`);

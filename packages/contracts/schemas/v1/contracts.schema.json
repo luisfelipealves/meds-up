@@ -12,7 +12,7 @@
         "schemaVersion": { "const": 1 },
         "reviewSessionId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
         "mediaType": { "enum": ["application/pdf", "image/jpeg", "image/png"] },
-        "byteLength": { "type": "integer", "minimum": 1 }
+        "byteLength": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
       }
     },
     "UntrustedPrescriptionProposal": {
@@ -64,8 +64,8 @@
         "ownerDoctorId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
         "patientAssociationId": { "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }] },
         "status": { "enum": ["ACTIVE", "SUSPENDED", "CANCELLED"] },
-        "currentPrescriptionVersion": { "type": "integer", "minimum": 1 },
-        "resourceVersion": { "type": "integer", "minimum": 1 },
+        "currentPrescriptionVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "resourceVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       }
@@ -79,8 +79,8 @@
         "schemaVersion": { "const": 1 },
         "lifecycle": { "const": "DOCTOR_CONFIRMED_VERSION" },
         "prescriptionId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
-        "prescriptionVersion": { "type": "integer", "minimum": 1 },
-        "resourceVersion": { "type": "integer", "minimum": 1 },
+        "prescriptionVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "resourceVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
         "confirmedByDoctorId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
         "confirmedAt": { "type": "string", "format": "date-time" },
         "createdAt": { "type": "string", "format": "date-time" },
@@ -116,7 +116,7 @@
         "idempotencyKey": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{16,128}$" },
         "prescriptionId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
         "ownerDoctorId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
-        "expectedResourceVersion": { "type": "integer", "minimum": 1 },
+        "expectedResourceVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
         "targetStatus": { "enum": ["SUSPENDED", "CANCELLED"] },
         "requestedAt": { "type": "string", "format": "date-time" }
       }
@@ -130,11 +130,11 @@
         "schemaVersion": { "const": 1 },
         "eventId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
         "prescriptionId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
-        "prescriptionVersion": { "type": "integer", "minimum": 1 },
+        "prescriptionVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
         "previousStatus": { "enum": ["ACTIVE", "SUSPENDED"] },
         "status": { "enum": ["SUSPENDED", "CANCELLED"] },
-        "resourceVersion": { "type": "integer", "minimum": 2 },
-        "serverVersion": { "type": "integer", "minimum": 1 },
+        "resourceVersion": { "type": "integer", "minimum": 2, "maximum": 9007199254740991 },
+        "serverVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
         "occurredAt": { "type": "string", "format": "date-time" }
       }
     },

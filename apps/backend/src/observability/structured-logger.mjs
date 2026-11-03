@@ -13,7 +13,6 @@ export const LOG_OUTCOMES = Object.freeze({
 });
 
 const VALUE_VALIDATORS = Object.freeze({
-  requestId: (value) => typeof value === "string" && /^req_[A-Za-z0-9_-]{16,64}$/.test(value),
   action: (value) => Object.values(LOG_ACTIONS).includes(value),
   outcome: (value) => Object.values(LOG_OUTCOMES).includes(value),
   errorCode: (value) => Object.values(ERROR_CODES).includes(value),
