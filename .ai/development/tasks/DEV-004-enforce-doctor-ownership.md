@@ -2,13 +2,14 @@
 id: DEV-004
 type: development
 title: Enforce doctor ownership isolation
-status: PLANNED
+status: READY
 source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-003]
 parallel_class: SERIAL
 assigned_agent: null
 branch: null
 worktree: null
+updated_at: 2026-11-03T15:53:52Z
 ---
 
 # Objective
