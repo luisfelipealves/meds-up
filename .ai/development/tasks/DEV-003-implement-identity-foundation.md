@@ -2,14 +2,15 @@
 id: DEV-003
 type: development
 title: Implement identity, sessions, and role foundation
-status: READY
+status: IN_PROGRESS
 source: [PD-001, PD-005]
 depends_on: [DEV-001]
 parallel_class: PARALLEL_SAFE
-assigned_agent: null
-branch: null
-worktree: null
-updated_at: 2026-11-01T20:15:17Z
+assigned_agent: developer-dev-003
+branch: agent/dev-003-identity-foundation
+worktree: /home/felipe/projetos/meds-up-worktrees/dev-003-identity-foundation
+started_at: 2026-11-03T15:44:36Z
+updated_at: 2026-11-03T15:44:36Z
 ---
 
 # Objective
