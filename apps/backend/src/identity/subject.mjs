@@ -1,9 +1,7 @@
+import { ROLES } from "@medsup/contracts";
 import { ERROR_CODES, FoundationError } from "./errors.mjs";
 
-export const ROLES = Object.freeze({
-  DOCTOR: "doctor",
-  PATIENT: "patient",
-});
+export { ROLES };
 
 const VALID_ROLES = new Set(Object.values(ROLES));
 const authenticatedSubjects = new WeakSet();

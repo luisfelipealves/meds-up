@@ -163,7 +163,7 @@
           "additionalProperties": false,
           "required": ["code", "message", "requestId", "retryable"],
           "properties": {
-            "code": { "enum": ["VALIDATION_FAILED", "UNAUTHORIZED", "NOT_FOUND", "CONFLICT", "STALE_RESOURCE_VERSION", "IDEMPOTENCY_CONFLICT", "UNSUPPORTED_API_VERSION", "INTERNAL_ERROR"] },
+            "code": { "enum": ["VALIDATION_FAILED", "UNAUTHORIZED", "NOT_FOUND", "CONFLICT", "STALE_RESOURCE_VERSION", "IDEMPOTENCY_CONFLICT", "UNSUPPORTED_API_VERSION", "AUTHENTICATION_FAILED", "INVALID_AUTHENTICATED_SUBJECT", "ROLE_FORBIDDEN", "SESSION_EXPIRED", "SESSION_REVOKED", "DEVICE_REVOKED", "INTERNAL_ERROR"] },
             "message": { "type": "string" },
             "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
             "retryable": { "type": "boolean" }

@@ -2,11 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  ERROR_CODES as CONTRACT_ERROR_CODES,
+  ROLES as CONTRACT_ROLES,
+  validateErrorEnvelope,
+} from "@medsup/contracts";
+
+import {
   ROLES,
   createAuthenticatedSubject,
   requireRole,
 } from "../src/identity/subject.mjs";
-import { toErrorEnvelope } from "../src/identity/errors.mjs";
+import { ERROR_CODES, toErrorEnvelope } from "../src/identity/errors.mjs";
 import {
   SAFE_TEST_IDENTITIES,
   createDeterministicFakeIdentityProvider,
@@ -16,6 +22,8 @@ import { createSessionManager } from "../src/identity/session-manager.mjs";
 import { createStructuredLogger } from "../src/observability/structured-logger.mjs";
 
 test("doctor and patient subjects are explicit and non-interchangeable", () => {
+  assert.equal(ROLES, CONTRACT_ROLES);
+  assert.equal(ERROR_CODES, CONTRACT_ERROR_CODES);
   const doctor = createAuthenticatedSubject({ subjectId: "subject-doctor", role: ROLES.DOCTOR });
   const patient = createAuthenticatedSubject({ subjectId: "subject-patient", role: ROLES.PATIENT });
 
@@ -29,7 +37,7 @@ test("doctor and patient subjects are explicit and non-interchangeable", () => {
   );
 });
 
-test("foundation failures use a provider-neutral error envelope", () => {
+test("foundation failures use the shared provider-neutral error envelope", () => {
   let failure;
   try {
     requireRole(createAuthenticatedSubject({ subjectId: "subject-doctor", role: ROLES.DOCTOR }), ROLES.PATIENT);
@@ -37,13 +45,17 @@ test("foundation failures use a provider-neutral error envelope", () => {
     failure = error;
   }
 
-  assert.deepEqual(toErrorEnvelope(failure), {
+  const envelope = toErrorEnvelope(failure, "req_identity_0001");
+  assert.deepEqual(envelope, {
+    apiVersion: "v1",
     error: {
       code: "ROLE_FORBIDDEN",
-      message: "Authenticated role is not permitted",
+      message: "The authenticated role is not permitted.",
+      requestId: "req_identity_0001",
       retryable: false,
     },
   });
+  assert.equal(validateErrorEnvelope(envelope), envelope);
 });
 
 test("replaceable identity providers authenticate deterministic safe test identities", async () => {

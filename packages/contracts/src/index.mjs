@@ -1,6 +1,28 @@
 export const API_VERSION = "v1";
 export const SCHEMA_VERSION = 1;
 
+export const ROLES = Object.freeze({
+  DOCTOR: "doctor",
+  PATIENT: "patient"
+});
+
+export const ERROR_CODES = Object.freeze({
+  VALIDATION_FAILED: "VALIDATION_FAILED",
+  UNAUTHORIZED: "UNAUTHORIZED",
+  NOT_FOUND: "NOT_FOUND",
+  CONFLICT: "CONFLICT",
+  STALE_RESOURCE_VERSION: "STALE_RESOURCE_VERSION",
+  IDEMPOTENCY_CONFLICT: "IDEMPOTENCY_CONFLICT",
+  UNSUPPORTED_API_VERSION: "UNSUPPORTED_API_VERSION",
+  AUTHENTICATION_FAILED: "AUTHENTICATION_FAILED",
+  INVALID_AUTHENTICATED_SUBJECT: "INVALID_AUTHENTICATED_SUBJECT",
+  ROLE_FORBIDDEN: "ROLE_FORBIDDEN",
+  SESSION_EXPIRED: "SESSION_EXPIRED",
+  SESSION_REVOKED: "SESSION_REVOKED",
+  DEVICE_REVOKED: "DEVICE_REVOKED",
+  INTERNAL_ERROR: "INTERNAL_ERROR"
+});
+
 const ERROR_DEFINITIONS = Object.freeze({
   VALIDATION_FAILED: ["The request is invalid.", false],
   UNAUTHORIZED: ["The request is not authorized.", false],
@@ -9,6 +31,12 @@ const ERROR_DEFINITIONS = Object.freeze({
   STALE_RESOURCE_VERSION: ["The resource changed; refresh and retry.", true],
   IDEMPOTENCY_CONFLICT: ["The idempotency key was already used for another request.", false],
   UNSUPPORTED_API_VERSION: ["The API version is not supported.", false],
+  AUTHENTICATION_FAILED: ["Authentication failed.", false],
+  INVALID_AUTHENTICATED_SUBJECT: ["The authenticated subject is invalid.", false],
+  ROLE_FORBIDDEN: ["The authenticated role is not permitted.", false],
+  SESSION_EXPIRED: ["The session has expired.", false],
+  SESSION_REVOKED: ["The session is not active.", false],
+  DEVICE_REVOKED: ["The device is not authorized to synchronize.", false],
   INTERNAL_ERROR: ["The request could not be completed.", true]
 });
 

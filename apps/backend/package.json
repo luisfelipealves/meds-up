@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "@medsup/contracts": "1.0.0"
+  },
   "scripts": {
     "build": "node ../../scripts/build-node-surface.mjs backend",
     "test": "node --test test/*.test.mjs",
