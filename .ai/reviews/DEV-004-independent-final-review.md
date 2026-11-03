@@ -68,4 +68,3 @@ Passed on the reviewed branch:
 ## Next action
 
 Return DEV-004 for remediation of B4. Add value/schema validation and nested-content adversarial tests for all active-session metadata outputs, rerun the complete available validation, and request another independent review. Do not merge main, push, or begin DEV-005 work from this review.
-
