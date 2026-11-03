@@ -7,9 +7,11 @@ integration_commit: da5a6c98e9e51f4b503bd0593e03ecad4018075d
 review_record_commit: 3385d51d841acec7b64e481b8591a724d0c86d5b
 remediation_commit: 112b792eba5593ef59efd0d1c60435f390834838
 second_remediation_commit: 560626632f3a6165870246c642da3e930a26720b
+third_remediation_commit: 22109d31737aa5f185bf2730e5fa6a1dddc3db36
 integrated_at: 2026-11-03T15:55:44Z
 remediated_at: 2026-11-03T16:08:53Z
 second_remediated_at: 2026-11-03T16:18:00Z
+third_remediated_at: 2026-11-03T16:25:36Z
 ready_for_review: true
 ---
 
@@ -113,11 +115,31 @@ Independent re-review commit `0fa7707c3f66a53678a373fcf7f9072798ba836f` kept B1 
 - Post-build runtime/privacy scan found no deterministic fake, fixed test credential, test identity, or test-support artifact in `apps/backend/dist`; the logging artifact contains no request-ID or clinical/OCR field path.
 - `git diff --check e9fe0afed3e8ce851d49103db1beb714a46c08e8..HEAD` and worktree `git diff --check` passed before this handoff update.
 
+## Independent re-review 2 final remediation history
+
+Independent re-review 2 commit `d65c1b6d9e6bea0460f0ac71a33c68a26051dbab` kept B1 blocking because the recursive backend build shipped `dist/identity/identity-port.mjs`. Its exported `createIdentityCompositionRoot` accepted an attacker-selected provider result, branded it, and made the resulting doctor subject acceptable to the same built authorization primitive. Final remediation commit `22109d31737aa5f185bf2730e5fa6a1dddc3db36` removes that runtime authority. DEV-002 and DEV-003 remain `INTEGRATED` pending independent review.
+
+### Root cause and architectural remediation
+
+- **Root cause:** Closing package exports did not close the deployable artifact boundary. Production still owned a module-global `WeakSet`, subject minting, provider installation, assertion, and role authorization in one recursively copied module. Any direct built-artifact importer could therefore supply a provider and create a doctor accepted by that same global authority.
+- **Runtime authority removal:** `identity-port.mjs` is deleted. Generated runtime contains no brand registry, provider installation, authentication operation, credential handling, or subject-minting function. `subject.mjs` now creates role guards only from an injected trusted `assertAuthenticatedSubject` capability, and `createSessionManager` requires that same capability explicitly.
+- **Test-only authority:** The deterministic brand, authentication harness, identities, and credentials now live entirely under `apps/backend/test/support`. Two independently created harness authorities use separate brands; a subject from one is rejected by a role guard and session manager configured with the other.
+- **Built-artifact adversary:** `built-artifact-authority.test.mjs` runs the backend build, recursively imports every generated `dist/**/*.mjs`, rejects composition/register/mint/authenticate/provider-factory exports, and runs the exact attacker-provider/composition-root probe. The final artifact has five modules, no dangerous export, and no path that can produce an attacker doctor accepted by built authorization.
+
+### TDD and validation evidence
+
+- RED: the new post-build test failed against the reviewed runtime on `dist/identity/identity-port.mjs:createIdentityCompositionRoot`; the exact attacker-provider path was present and the prior independent probe had already demonstrated the accepted `attacker-doctor` result.
+- GREEN: focused built-artifact and identity tests passed 15/15; complete backend tests passed 17/17, including cross-authority rejection.
+- `npm ci --ignore-scripts` passed; 13 packages audited, 0 vulnerabilities. `npm audit --json` and `npm audit --omit=dev --json` both reported 0 vulnerabilities; `npm ls --all` reported a valid dependency tree.
+- `ANDROID_HOME=/home/felipe/.hermes/cache/scratch/android-sdk ANDROID_SDK_ROOT=/home/felipe/.hermes/cache/scratch/android-sdk ./scripts/validate.sh` passed all Node build/test/lint/static checks and Android/Wear assemble, unit-test, lint, and check commands. Node totals: backend 17/17, PWA 2/2, contracts 13/13.
+- Runtime and generated-artifact privacy scans found no raw OCR, proposal, document, credential, fixed test secret, provider, brand registry, composition root, or minting path. B2/B3/B4/N1/N2 and PD-008 behavior remains covered and unchanged.
+- `git diff --check e9fe0afed3e8ce851d49103db1beb714a46c08e8..HEAD` and worktree `git diff --check` passed before this handoff update.
+
 ## Known issues
 
 - Session/device state remains intentionally in memory; persistence, real identity providers, account recovery flow, and provider selection are outside DEV-003 and this integration.
-- Both failed independent review records are preserved under `.ai/reviews`; this second remediation requires another independent re-review.
+- All failed independent review records are preserved under `.ai/reviews`; this final remediation requires another independent re-review.
 
 ## Review readiness
 
-`ready_for_review: true`. Re-review the integrated diff from base `e9fe0afed3e8ce851d49103db1beb714a46c08e8` through second remediation commit `560626632f3a6165870246c642da3e930a26720b`, with particular attention to the B1/B3 production-surface probes and N1 numeric-boundary parity evidence above. DEV-002 and DEV-003 remain `INTEGRATED` and must not advance to `HUMAN_TESTING` until the follow-up independent review passes.
+`ready_for_review: true`. Re-review the integrated diff from base `e9fe0afed3e8ce851d49103db1beb714a46c08e8` through final remediation commit `22109d31737aa5f185bf2730e5fa6a1dddc3db36`, with particular attention to the recursive built-artifact B1 probe, cross-authority rejection, preserved B2/B3/B4/N1/N2 behavior, and PD-008 privacy boundary. DEV-002 and DEV-003 remain `INTEGRATED` and must not advance to `HUMAN_TESTING` until independent review passes.
