@@ -8,6 +8,7 @@
     "./identity/subject": "./src/identity/subject.mjs",
     "./identity/session-manager": "./src/identity/session-manager.mjs",
     "./identity/errors": "./src/identity/errors.mjs",
+    "./authorization/doctor-ownership": "./src/authorization/doctor-ownership.mjs",
     "./observability/structured-logger": "./src/observability/structured-logger.mjs"
   },
   "dependencies": {
