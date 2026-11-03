@@ -121,7 +121,8 @@ No PA-001 through PA-006 product blocker remains. Task readiness is determined o
 # Status and dependency graph
 
 ```text
-READY:   DEV-001, DEV-022
+IMPLEMENTED: DEV-001
+READY:       DEV-002, DEV-003, DEV-022
 
 DEV-001                         -> DEV-002, DEV-003
 DEV-002                         -> DEV-011

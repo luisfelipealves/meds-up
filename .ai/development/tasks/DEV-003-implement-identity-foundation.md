@@ -2,13 +2,14 @@
 id: DEV-003
 type: development
 title: Implement identity, sessions, and role foundation
-status: PLANNED
+status: READY
 source: [PD-001, PD-005]
 depends_on: [DEV-001]
 parallel_class: PARALLEL_SAFE
 assigned_agent: null
 branch: null
 worktree: null
+updated_at: 2026-11-01T20:15:17Z
 ---
 
 # Objective
