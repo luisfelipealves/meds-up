@@ -88,6 +88,28 @@ test("lists are owner-scoped and active sessions return metadata only", async ()
   assert.deepEqual(service.listClaimControls(doctorA).map(({ id }) => id), ["claim_control_000001"]);
 });
 
+test("active-session metadata rejects nested or invalid retained values on get, list, and mutation", async () => {
+  const sentinel = "RAW_OCR_AI_UNCONFIRMED_PROPOSAL_SENTINEL";
+  const malformedRecords = [
+    { id: { document: sentinel }, status: "ACTIVE" },
+    { id: "review_session_000000000001", status: "ACTIVE", reviewSessionId: { rawOcr: sentinel } },
+    { id: "review_session_000000000002", status: ["ACTIVE", { document: sentinel }] },
+    { id: "review_session_000000000003", status: sentinel },
+    { id: "review_session_000000000004", status: "ACTIVE", createdAt: { unconfirmedProposal: sentinel } },
+    { id: "review_session_000000000005", status: "ACTIVE", updatedAt: sentinel },
+    { id: "review_session_000000000006", status: "ACTIVE", expiresAt: 42 },
+    { id: "review_session_000000000007", status: "ACTIVE", createdAt: "not-a-timestamp" },
+  ];
+  const repository = createOwnedRepository(malformedRecords.map((record) => entry(record, IDENTITIES.DOCTOR_A.subjectId)));
+  const { doctorA, service } = await fixture({ activeReviewSessions: repository });
+
+  for (const record of malformedRecords) {
+    assert.throws(() => service.getActiveReviewSession(doctorA, record.id), notFound);
+  }
+  assert.throws(() => service.listActiveReviewSessions(doctorA), notFound);
+  assert.throws(() => service.mutateActiveReviewSession(doctorA, "review_session_000000000002", { status: "COMPLETED" }), (error) => error.code === "NOT_FOUND" && !error.message.includes(sentinel));
+});
+
 test("mutation strips forged ownership and session payload fields before one atomic repository call", async () => {
   const received = [];
   let sideEffects = 0;

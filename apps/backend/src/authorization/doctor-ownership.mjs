@@ -13,6 +13,9 @@ const RESOURCE_DEFINITIONS = Object.freeze([
 const AUTHORITY_FIELDS = new Set(["ownerDoctorId", "confirmedByDoctorId", "actorDoctorId", "authorization"]);
 const SESSION_CONTENT_FIELDS = new Set(["document", "sourceDocument", "rawOcr", "rawAiOutput", "unconfirmedProposal", "proposal", "clinicalContent"]);
 const SESSION_METADATA_FIELDS = new Set(["id", "reviewSessionId", "status", "createdAt", "updatedAt", "expiresAt"]);
+const SESSION_STATUS_VALUES = new Set(["ACTIVE", "COMPLETED", "EXPIRED", "SUSPENDED", "CANCELLED"]);
+const OPAQUE_IDENTIFIER = /^[A-Za-z0-9_-]{16,128}$/;
+const OFFSET_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 
 function notFound() { return new FoundationError(ERROR_CODES.NOT_FOUND, NOT_FOUND_MESSAGE); }
 function isObject(value) { return value !== null && typeof value === "object" && !Array.isArray(value); }
@@ -46,7 +49,15 @@ function sanitizeMutation(value, activeOnly) {
   return sanitize(value);
 }
 
-function projectSession(record) { return Object.fromEntries(Object.entries(record).filter(([key]) => SESSION_METADATA_FIELDS.has(key))); }
+function isOpaqueIdentifier(value) { return typeof value === "string" && OPAQUE_IDENTIFIER.test(value); }
+function isOffsetTimestamp(value) { return typeof value === "string" && value.length <= 40 && OFFSET_TIMESTAMP.test(value) && !Number.isNaN(Date.parse(value)); }
+
+function projectSession(record) {
+  if (!isObject(record) || !isOpaqueIdentifier(record.id) || !SESSION_STATUS_VALUES.has(record.status)) throw notFound();
+  for (const key of ["reviewSessionId"]) if (key in record && !isOpaqueIdentifier(record[key])) throw notFound();
+  for (const key of ["createdAt", "updatedAt", "expiresAt"]) if (key in record && !isOffsetTimestamp(record[key])) throw notFound();
+  return Object.fromEntries(Object.entries(record).filter(([key]) => SESSION_METADATA_FIELDS.has(key)));
+}
 function publicRecord(projection, activeOnly, name) { const value = unpackProjection(projection, name).record; return activeOnly ? projectSession(value) : value; }
 
 function requireRepository(repository, name) {
