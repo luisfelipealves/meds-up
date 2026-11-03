@@ -2,7 +2,7 @@
 id: DEV-003
 type: development
 title: Implement identity, sessions, and role foundation
-status: INTEGRATED
+status: HUMAN_TESTING
 source: [PD-001, PD-005]
 depends_on: [DEV-001]
 parallel_class: PARALLEL_SAFE
@@ -10,7 +10,7 @@ assigned_agent: developer-dev-003
 branch: agent/dev-003-identity-foundation
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-003-identity-foundation
 started_at: 2026-11-03T15:44:36Z
-updated_at: 2026-11-03T15:55:44Z
+updated_at: 2026-11-03T16:29:45Z
 completed_at: 2026-11-03T15:50:44Z
 commit: 3df837243492274ee3975b278c728295dc692376
 handoff: .ai/development/handoffs/DEV-003-developer-handoff.md
@@ -18,6 +18,10 @@ integration_branch: agent/integration-dev-002-dev-003
 integration_commit: da5a6c98e9e51f4b503bd0593e03ecad4018075d
 integration_handoff: .ai/development/integration/DEV-002-DEV-003-integration-handoff.md
 integrated_at: 2026-11-03T15:55:44Z
+final_review: .ai/reviews/DEV-002-DEV-003-independent-final-review.md
+final_review_commit: b9af37b54db262d6d5972c707cb1192ef7fa7e70
+human_testing_handoff: .ai/development/handoffs/DEV-002-DEV-003-human-testing.md
+merge_status: NOT_MERGED
 ---
 
 # Objective

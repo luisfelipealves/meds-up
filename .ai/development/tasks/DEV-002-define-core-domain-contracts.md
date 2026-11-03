@@ -2,7 +2,7 @@
 id: DEV-002
 type: development
 title: Define core prescription and API contracts
-status: INTEGRATED
+status: HUMAN_TESTING
 source: [PD-001, PD-008]
 depends_on: [DEV-001]
 parallel_class: PARALLEL_CONDITIONAL
@@ -14,12 +14,16 @@ worktree: /home/felipe/projetos/meds-up-worktrees/dev-002-core-contracts
 commit: da1bd862ff78629367dcb024c687ea6cd63a35f0
 handoff: .ai/development/handoffs/DEV-002-developer-handoff.md
 started_at: 2026-11-03T15:44:25Z
-updated_at: 2026-11-03T15:55:44Z
+updated_at: 2026-11-03T16:29:45Z
 completed_at: 2026-11-03T15:51:27Z
 integration_branch: agent/integration-dev-002-dev-003
 integration_commit: da5a6c98e9e51f4b503bd0593e03ecad4018075d
 integration_handoff: .ai/development/integration/DEV-002-DEV-003-integration-handoff.md
 integrated_at: 2026-11-03T15:55:44Z
+final_review: .ai/reviews/DEV-002-DEV-003-independent-final-review.md
+final_review_commit: b9af37b54db262d6d5972c707cb1192ef7fa7e70
+human_testing_handoff: .ai/development/handoffs/DEV-002-DEV-003-human-testing.md
+merge_status: NOT_MERGED
 ---
 
 # Objective
