@@ -10,6 +10,9 @@ Greenfield monorepo foundation for the backend, doctor PWA, Android client, and 
 | Doctor PWA | `apps/pwa` | `make pwa-build` | `make pwa-test` | `make pwa-lint` | `make pwa-static-check` |
 | Android | `apps/android` | `make android-build` | `make android-test` | `make android-lint` | `make android-static-check` |
 | Wear OS | `apps/wear` | `make wear-build` | `make wear-test` | `make wear-lint` | `make wear-static-check` |
+| Shared contracts | `packages/contracts` | `npm run build -w @medsup/contracts` | `npm test -w @medsup/contracts` | `npm run lint -w @medsup/contracts` | JSON Schema and compatibility tests |
+
+The versioned provider-neutral prescription/API contract package is documented in [`packages/contracts/README.md`](packages/contracts/README.md).
 
 Run all commands with `make validate`. Node 22+ and JDK 17+ are required. Android/Wear checks additionally require Android SDK Platform 35, Build Tools 35, and an SDK path in `ANDROID_HOME`, `ANDROID_SDK_ROOT`, or untracked `local.properties`.
 

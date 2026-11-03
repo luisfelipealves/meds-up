@@ -7,7 +7,8 @@
   },
   "workspaces": [
     "apps/backend",
-    "apps/pwa"
+    "apps/pwa",
+    "packages/contracts"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
