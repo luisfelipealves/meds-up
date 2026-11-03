@@ -6,8 +6,10 @@ base_commit: e9fe0afed3e8ce851d49103db1beb714a46c08e8
 integration_commit: da5a6c98e9e51f4b503bd0593e03ecad4018075d
 review_record_commit: 3385d51d841acec7b64e481b8591a724d0c86d5b
 remediation_commit: 112b792eba5593ef59efd0d1c60435f390834838
+second_remediation_commit: 560626632f3a6165870246c642da3e930a26720b
 integrated_at: 2026-11-03T15:55:44Z
 remediated_at: 2026-11-03T16:08:53Z
+second_remediated_at: 2026-11-03T16:18:00Z
 ready_for_review: true
 ---
 
@@ -85,11 +87,37 @@ Independent review at `3385d51d841acec7b64e481b8591a724d0c86d5b` recorded `CHANG
 - Privacy scans over backend runtime, contract runtime, and published schemas returned no document/OCR/provider-payload/persistence/recovery/clinical logging fields; adversarial logger and error-schema tests confirm fail-closed behavior.
 - `git diff --check` — passed.
 
+## Independent re-review remediation history
+
+Independent re-review commit `0fa7707c3f66a53678a373fcf7f9072798ba836f` kept B1 and B3 blocking and N1 partially unresolved. Second remediation commit `560626632f3a6165870246c642da3e930a26720b` addresses those three findings. DEV-002 and DEV-003 remain `INTEGRATED` pending another independent re-review.
+
+### Root causes and redesign
+
+- **B1:** The prior WeakSet rejected arbitrary provider objects but production still owned and exported both the deterministic provider registrar and its fixed doctor credential. Any ordinary importer could therefore ask production to trust the bundled fake. Deterministic records, credentials, provider behavior, and the authentication helper now exist only in `apps/backend/test/support`. Production exposes an explicit package export map containing only application-facing modules; provider installation and subject minting remain inside the non-exported composition-root authority. The negative runtime-surface test scans all production source, imports every package export, rejects dangerous export names, and proves the internal identity authority is blocked by `ERR_PACKAGE_PATH_NOT_EXPORTED`. The built `dist` contains no test-support path, fake provider, fixed test identity, or fixed credential.
+- **B3:** The prior request-ID regex constrained syntax but still trusted caller-selected semantics, so identifier-shaped OCR/clinical text passed unchanged to the sink. `requestId` was removed from the logger field API entirely; the logger still permits only closed event/action/outcome/error enums and bounded duration. The adversarial test injects `req_rawOCRpatientMedicationDose1234` through the event and every field-shaped input, including the removed request-ID path, and checks after each probe that the sink remains untouched.
+- **N1:** Runtime and schema duplicated integer constraints, but the schema encoded only lower bounds while runtime used `Number.isSafeInteger`. All nine published integer field occurrences now set `maximum: 9007199254740991`, including the `resourceVersion` minimum-2 variant. Boundary parity fixtures exercise every occurrence through AJV and its runtime validator: max is accepted and max+1 is rejected by both.
+
+### Adversarial RED evidence
+
+- B1 exact probe minted `{ "subjectId": "test-doctor-0001", "role": "doctor" }`; the production-surface regression then failed on `production source contains safe-test-doctor-secret`.
+- B3 exact probe emitted `{ "requestId": "req_rawOCRpatientMedicationDose1234" }`; the regression failed with `Missing expected exception (TypeError)` on the request-ID field.
+- N1 exact AJV/runtime probe returned `{ "schemaAccepted": true, "runtimeAccepted": false }` for `byteLength: 9007199254740992`; the boundary regression failed with `EphemeralDocumentInput.byteLength schema accepted unsafe integer`.
+
+### GREEN and regression evidence
+
+- `node --test apps/backend/test/identity-foundation.test.mjs` — passed 13/13 focused identity, session, runtime-surface, and logging tests.
+- `npm test -w @medsup/contracts` — passed 13/13, including all nine safe-integer max/max+1 parity fixtures.
+- `npm ci --ignore-scripts` — clean install passed; 13 packages audited, 0 vulnerabilities.
+- `npm audit --json` and `npm audit --omit=dev --json` — both reported 0 vulnerabilities; `npm ls --all` reported a valid dependency tree.
+- `ANDROID_HOME=/home/felipe/.hermes/cache/scratch/android-sdk ANDROID_SDK_ROOT=/home/felipe/.hermes/cache/scratch/android-sdk ./scripts/validate.sh` — passed Node build/test/lint/static checks and all Android/Wear assemble, unit-test, lint, and check commands. Node totals were backend 15/15, PWA 2/2, contracts 13/13.
+- Post-build runtime/privacy scan found no deterministic fake, fixed test credential, test identity, or test-support artifact in `apps/backend/dist`; the logging artifact contains no request-ID or clinical/OCR field path.
+- `git diff --check e9fe0afed3e8ce851d49103db1beb714a46c08e8..HEAD` and worktree `git diff --check` passed before this handoff update.
+
 ## Known issues
 
 - Session/device state remains intentionally in memory; persistence, real identity providers, account recovery flow, and provider selection are outside DEV-003 and this integration.
-- The first independent review failed and is preserved at `.ai/reviews/DEV-002-DEV-003-independent-review.md`; remediation now requires independent re-review.
+- Both failed independent review records are preserved under `.ai/reviews`; this second remediation requires another independent re-review.
 
 ## Review readiness
 
-`ready_for_review: true`. Re-review the integrated diff from base `e9fe0afed3e8ce851d49103db1beb714a46c08e8` through remediation commit `112b792eba5593ef59efd0d1c60435f390834838`, with particular attention to the B1-B4 and N1-N2 adversarial evidence above. DEV-002 and DEV-003 remain `INTEGRATED` and must not advance to `HUMAN_TESTING` until the follow-up independent review passes.
+`ready_for_review: true`. Re-review the integrated diff from base `e9fe0afed3e8ce851d49103db1beb714a46c08e8` through second remediation commit `560626632f3a6165870246c642da3e930a26720b`, with particular attention to the B1/B3 production-surface probes and N1 numeric-boundary parity evidence above. DEV-002 and DEV-003 remain `INTEGRATED` and must not advance to `HUMAN_TESTING` until the follow-up independent review passes.
