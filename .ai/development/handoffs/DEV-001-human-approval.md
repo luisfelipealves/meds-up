@@ -6,7 +6,8 @@ branch: agent/dev-001-foundation
 commit: 25c76a40aa6f4355cc1f1a22f379853052a41283
 human_approved_at: 2026-11-03T15:39:03Z
 approval_scope: HUMAN_TESTING
-merge_status: NOT_MERGED
+merge_authorized_at: 2026-11-03T15:41:14Z
+merge_status: AUTHORIZED_PENDING
 ---
 
 # Human approval — DEV-001
@@ -19,4 +20,4 @@ This accepts the DEV-001 human-testing results and the project-foundation scope 
 
 ## Boundary
 
-This approval does not authorize merging into `main`, pushing to GitHub, deployment, release, or provider selection. DEV-001 remains unmerged until a separate explicit merge instruction is given.
+The human subsequently instructed: `Autorizo o merge de DEV-001 em main.` This authorizes the local merge into `main` only. It does not authorize pushing to GitHub, deployment, release, or provider selection.
