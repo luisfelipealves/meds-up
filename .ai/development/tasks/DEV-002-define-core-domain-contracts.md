@@ -2,16 +2,17 @@
 id: DEV-002
 type: development
 title: Define core prescription and API contracts
-status: READY
+status: IN_PROGRESS
 source: [PD-001, PD-008]
 depends_on: [DEV-001]
 parallel_class: PARALLEL_CONDITIONAL
 parallel_notes:
   - Stabilizes shared contracts used by backend and clients.
-assigned_agent: null
-branch: null
-worktree: null
-updated_at: 2026-11-01T20:15:17Z
+assigned_agent: developer-dev-002
+branch: agent/dev-002-core-contracts
+worktree: /home/felipe/projetos/meds-up-worktrees/dev-002-core-contracts
+started_at: 2026-11-03T15:44:25Z
+updated_at: 2026-11-03T15:44:25Z
 ---
 
 # Objective
