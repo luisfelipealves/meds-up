@@ -92,6 +92,14 @@ const isClinicalContent = (value) => hasOnlyKeys(value, ["medications"])
     && medication.medicationName.trim().length > 0
     && typeof medication.dose === "string"
     && medication.dose.trim().length > 0);
+const isSessionOnlyProvenance = (value) => hasOnlyKeys(value, ["source", "scope"])
+  && value.source === "OCR_AI_EXTRACTION"
+  && value.scope === "SESSION_ONLY";
+const isProposalConfidence = (value) => hasOnlyKeys(value, ["overall"])
+  && typeof value.overall === "number"
+  && Number.isFinite(value.overall)
+  && value.overall >= 0
+  && value.overall <= 1;
 const isIdempotencyKey = (value) => typeof value === "string" && /^[A-Za-z0-9._:-]{16,128}$/.test(value);
 const isExplicitConfirmation = (value) => hasOnlyKeys(value, ["decision", "confirmedByDoctorId", "confirmedAt"])
   && value.decision === "CONFIRMED"
@@ -116,6 +124,8 @@ export function validateUntrustedPrescriptionProposal(value) {
     reviewSessionId: isOpaqueId,
     generatedAt: isTimestamp,
     expiresAt: isTimestamp,
+    provenance: isSessionOnlyProvenance,
+    confidence: isProposalConfidence,
     clinicalContent: isClinicalContent
   });
   if (Date.parse(proposal.expiresAt) <= Date.parse(proposal.generatedAt)) {

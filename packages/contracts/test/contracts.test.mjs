@@ -46,6 +46,8 @@ const validProposal = {
   reviewSessionId: validInput.reviewSessionId,
   generatedAt: "2026-11-03T15:45:00Z",
   expiresAt: "2026-11-03T16:00:00Z",
+  provenance: { source: "OCR_AI_EXTRACTION", scope: "SESSION_ONLY" },
+  confidence: { overall: 0.85 },
   clinicalContent: {
     medications: [{ medicationName: "Example medicine", dose: "1 tablet" }]
   }
@@ -56,6 +58,12 @@ test("proposal remains explicitly untrusted and session-only", () => {
   for (const forbidden of ["prescriptionId", "confirmedAt", "confirmedByDoctorId", "storageKey", "recoveryToken", "rawProviderResponse"]) {
     assert.throws(() => validateUntrustedPrescriptionProposal({ ...validProposal, [forbidden]: "forbidden" }), ContractValidationError);
   }
+});
+
+test("proposal requires closed session-only provenance and bounded confidence", () => {
+  assert.throws(() => validateUntrustedPrescriptionProposal({ ...validProposal, provenance: { source: "OCR_AI_EXTRACTION", scope: "DURABLE" } }), ContractValidationError);
+  assert.throws(() => validateUntrustedPrescriptionProposal({ ...validProposal, confidence: { overall: 1.01 } }), ContractValidationError);
+  assert.throws(() => validateUntrustedPrescriptionProposal({ ...validProposal, confidence: { overall: 0.5, raw: "forbidden" } }), ContractValidationError);
 });
 
 const validConfirmation = {
