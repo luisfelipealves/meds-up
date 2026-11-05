@@ -1,6 +1,6 @@
 ---
 task: DEV-005
-status: HUMAN_TESTING
+status: APPROVED_COMPLETED
 integration_branch: agent/integration-dev-005
 integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-005
 base_commit: 3565d40b6e133bf25c2518ff54869a3b7f8a31ea
@@ -11,8 +11,12 @@ approved_review_commit: 4ca445e8b96416b8eaf779ca4cdb4374b7957c7a
 validation_status: PASSED
 architecture_gate: .ai/development/decisions/TD-001-production-health-data-processing-gate.md
 architecture_gate_status: OPEN
-merge_status: NOT_MERGED
+merge_status: MERGED_PUSHED
 prepared_at: 2026-11-05T12:07:18Z
+human_approval: .ai/development/handoffs/DEV-005-human-approval.md
+approved_head: f211769d98749f778700b8d1497580a998389c1c
+approval_record_commit: e1abb027fc6cf412bff680bf6ed222e46865ccb2
+completed_at: 2026-11-05T12:54:10Z
 ---
 
 # DEV-005 human-testing handoff
@@ -94,4 +98,17 @@ normal push to `origin/main`. That approval will not resolve TD-001 and will not
 authorize a real provider, region, network, key, deployment, production route,
 real health data, or DEV-006.
 
-No merge or push has occurred.
+## Human decision and completion
+
+The human explicitly approved only the scoped provider-neutral, local-only
+DEV-005 implementation and authorized the exact-head fast-forward merge and
+normal push. Independent approved review passed with zero blocking findings,
+the complete validator passed at `f211769`, and the authorized merge and first
+push completed. Approval and completion evidence is recorded in
+`.ai/development/handoffs/DEV-005-human-approval.md` and
+`.ai/development/handoffs/DEV-005-authorized-merge.md`.
+
+TD-001 remains `OPEN`. No real prescription document, OpenAI or other provider
+call, provider credential, production ingress, region/network/key choice,
+deployment, real-health-data operation, or DEV-006 work was authorized or
+performed.

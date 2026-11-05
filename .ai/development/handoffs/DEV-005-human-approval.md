@@ -1,7 +1,7 @@
 ---
 task: DEV-005
 type: human-approval
-status: APPROVED_FOR_MERGE
+status: APPROVED_COMPLETED
 branch: agent/integration-dev-005
 approved_head: f211769d98749f778700b8d1497580a998389c1c
 human_approved_at: 2026-11-05T12:53:18Z
@@ -10,6 +10,10 @@ merge_target: main
 push_target: origin/main
 architecture_gate: .ai/development/decisions/TD-001-production-health-data-processing-gate.md
 architecture_gate_status: OPEN
+approval_record_commit: e1abb027fc6cf412bff680bf6ed222e46865ccb2
+merged_at: 2026-11-05T12:53:18Z
+pushed_at: 2026-11-05T12:54:10Z
+merge_status: MERGED_PUSHED
 ---
 
 # Human approval — DEV-005
@@ -32,3 +36,16 @@ This approval applies only to DEV-005 local code. TD-001 remains `OPEN`. The app
 - `git merge --ff-only agent/integration-dev-005` advanced local `main` to the exact approved head. No force, reset, stash, rebase, clean, deployment, provider operation, or TD-001 change occurred.
 
 The pre-existing untracked `.ai/backups/` directory remained unmodified.
+
+## Completion
+
+The approved branch was fast-forwarded into local `main` at exact approved head
+`f211769d98749f778700b8d1497580a998389c1c`. The approval and independent-review
+records were then committed as
+`e1abb027fc6cf412bff680bf6ed222e46865ccb2` and pushed normally. Fetch/read-back
+confirmed local and remote `main` at that exact commit before the completion
+record was prepared.
+
+TD-001 remains `OPEN`; no TD-001 direction, real document, provider call,
+credential, production ingress, region/network/key choice, deployment,
+real-health-data operation, or DEV-006 work was included.

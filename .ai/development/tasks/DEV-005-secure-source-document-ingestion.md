@@ -2,7 +2,7 @@
 id: DEV-005
 type: development
 title: Implement ephemeral source-document processing gateway
-status: HUMAN_TESTING
+status: DONE
 source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-004]
 parallel_class: PARALLEL_SAFE
@@ -10,7 +10,7 @@ assigned_agent: developer-dev-005
 branch: agent/dev-005-ephemeral-ingestion
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-005-ephemeral-ingestion
 started_at: 2026-11-05T09:47:39Z
-updated_at: 2026-11-05T12:07:18Z
+updated_at: 2026-11-05T12:54:10Z
 implemented_at: 2026-11-05T09:53:41Z
 commit: 1dc6fbf835c1667b982d5bd55b94cb915ffc1d74
 handoff: .ai/development/handoffs/DEV-005-developer-handoff.md
@@ -40,6 +40,12 @@ final_review_non_blocking_findings: 1
 final_review_commit: 4ca445e8b96416b8eaf779ca4cdb4374b7957c7a
 human_testing_handoff: .ai/development/handoffs/DEV-005-human-testing.md
 human_testing_prepared_at: 2026-11-05T12:07:18Z
+approved_head: f211769d98749f778700b8d1497580a998389c1c
+approved_review: .ai/reviews/DEV-005-independent-approved-review.md
+human_approval: .ai/development/handoffs/DEV-005-human-approval.md
+approval_record_commit: e1abb027fc6cf412bff680bf6ed222e46865ccb2
+merge_handoff: .ai/development/handoffs/DEV-005-authorized-merge.md
+completed_at: 2026-11-05T12:54:10Z
 ---
 
 # Objective
@@ -179,3 +185,16 @@ the requested decision are recorded in
 `.ai/development/handoffs/DEV-005-human-testing.md`. TD-001 remains `OPEN`;
 DEV-006 remains `PLANNED`. No merge, push, provider/region/network/key choice,
 deployment, production activation, or real-health-data operation occurred.
+
+## Human Approval and Authorized Completion
+
+The human approved only the provider-neutral, local-only DEV-005 scope and
+authorized fast-forward merge of exact integration head `f211769` plus a normal
+push. A fresh independent approved review found zero blockers, and the complete
+Node/Android/Wear validator passed at that head. Local and remote `main` were
+verified at approval record `e1abb02` after the first push; final completion
+evidence is recorded in `.ai/development/handoffs/DEV-005-authorized-merge.md`.
+
+TD-001 remains `OPEN`, DEV-006 remains `PLANNED`, and no real document,
+provider/API call, credential, production ingress, region/network/key choice,
+deployment, or real-health-data operation was authorized or performed.
