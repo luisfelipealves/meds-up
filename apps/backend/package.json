@@ -9,6 +9,7 @@
     "./identity/session-manager": "./src/identity/session-manager.mjs",
     "./identity/errors": "./src/identity/errors.mjs",
     "./authorization/doctor-ownership": "./src/authorization/doctor-ownership.mjs",
+    "./ingestion/ephemeral-document-gateway": "./src/ingestion/ephemeral-document-gateway.mjs",
     "./observability/structured-logger": "./src/observability/structured-logger.mjs"
   },
   "dependencies": {
@@ -17,7 +18,7 @@
   "scripts": {
     "build": "node ../../scripts/build-node-surface.mjs backend",
     "test": "node --test test/*.test.mjs",
-    "lint": "node --check src/*.mjs test/*.mjs",
+    "lint": "node --check src/*.mjs src/authorization/*.mjs src/identity/*.mjs src/ingestion/*.mjs src/observability/*.mjs test/*.mjs test/support/*.mjs",
     "static-check": "node --test test/architecture.test.mjs"
   }
 }

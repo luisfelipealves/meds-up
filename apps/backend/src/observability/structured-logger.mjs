@@ -2,20 +2,39 @@ import { ERROR_CODES } from "@medsup/contracts";
 
 export const LOG_EVENTS = Object.freeze({
   IDENTITY_AUTHENTICATION_FAILED: "identity.authentication.failed",
+  DOCUMENT_INGESTION_COMPLETED: "document.ingestion.completed",
+  DOCUMENT_INGESTION_FAILED: "document.ingestion.failed",
+  DOCUMENT_INGESTION_REJECTED: "document.ingestion.rejected",
 });
 
 export const LOG_ACTIONS = Object.freeze({
   AUTHENTICATE: "AUTHENTICATE",
+  INGEST_DOCUMENT: "INGEST_DOCUMENT",
 });
 
 export const LOG_OUTCOMES = Object.freeze({
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
   REJECTED: "REJECTED",
+  TIMED_OUT: "TIMED_OUT",
 });
+
+const DOCUMENT_MEDIA_TYPES = new Set(["PDF", "JPEG", "PNG", "UNKNOWN"]);
+const DOCUMENT_FAILURE_CATEGORIES = new Set([
+  "UNSUPPORTED_MEDIA_TYPE",
+  "INVALID_DOCUMENT",
+  "DOCUMENT_LIMIT_EXCEEDED",
+  "PROCESSING_FAILED",
+  "PROCESSING_TIMEOUT",
+  "AUTHORIZATION_REJECTED",
+]);
 
 const VALUE_VALIDATORS = Object.freeze({
   action: (value) => Object.values(LOG_ACTIONS).includes(value),
   outcome: (value) => Object.values(LOG_OUTCOMES).includes(value),
   errorCode: (value) => Object.values(ERROR_CODES).includes(value),
+  mediaType: (value) => DOCUMENT_MEDIA_TYPES.has(value),
+  failureCategory: (value) => DOCUMENT_FAILURE_CATEGORIES.has(value),
   durationMs: (value) => Number.isSafeInteger(value) && value >= 0 && value <= 86_400_000,
 });
 
