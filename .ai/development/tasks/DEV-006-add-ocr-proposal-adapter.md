@@ -2,7 +2,7 @@
 id: DEV-006
 type: development
 title: Add OCR extraction proposal adapter
-status: INTEGRATED
+status: BLOCKED
 source: [PD-001, PD-008]
 depends_on: [DEV-005]
 parallel_class: PARALLEL_SAFE
@@ -10,7 +10,7 @@ assigned_agent: developer-dev-006
 branch: agent/dev-006-ocr-proposal-adapter
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-006-ocr-proposal-adapter
 started_at: 2026-11-05T13:05:08Z
-updated_at: 2026-11-05T13:16:54Z
+updated_at: 2026-11-05T13:20:03Z
 implemented_at: 2026-11-05T13:14:18Z
 commit: 8f6d2d1746f6b4d58e756bfbcb59685f94b3d982
 handoff: .ai/development/handoffs/DEV-006-developer-handoff.md
@@ -19,6 +19,10 @@ integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-00
 integrated_at: 2026-11-05T13:16:54Z
 integration_commit: 9d68ac2a8ee04ae7421545fb6c9d254e751d41bf
 integration_handoff: .ai/development/integration/DEV-006-integration-handoff.md
+review: .ai/reviews/DEV-006-independent-review.md
+reviewed_commit: dd056babcb0425e2d134d7d60fd7882b7a9a0a29
+review_status: CHANGES_REQUIRED
+review_blocking_findings: 1
 ---
 
 # Objective
@@ -118,3 +122,12 @@ introduced. TD-001 remains `OPEN`.
 Complete evidence and review cautions are recorded in
 `.ai/development/integration/DEV-006-integration-handoff.md`. DEV-006 is ready
 for independent review, not merge or push.
+
+# Independent Review
+
+Independent review of `dd056babcb0425e2d134d7d60fd7882b7a9a0a29`
+returned one blocking finding: a never-settling injected extractor leaves the
+operation pending beyond expiry or abandonment. DEV-006 is `BLOCKED` pending a
+bounded, enforceably contained extraction lifecycle, a never-settling regression
+test, fresh validation, and independent re-review. TD-001 remains `OPEN`; no
+merge or push is authorized.
