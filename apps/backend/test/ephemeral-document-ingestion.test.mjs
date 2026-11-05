@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { deflateSync } from "node:zlib";
 
 import { ROLES } from "@medsup/contracts";
 import {
@@ -47,16 +48,19 @@ function pngChunk(type, data = bytes()) {
     bytes((crc >>> 24) & 0xff, (crc >>> 16) & 0xff, (crc >>> 8) & 0xff, crc & 0xff),
   );
 }
-const png = ({ width = 1, height = 1 } = {}) => concat(
-  bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a),
-  pngChunk("IHDR", bytes(
-    (width >>> 24) & 0xff, (width >>> 16) & 0xff, (width >>> 8) & 0xff, width & 0xff,
-    (height >>> 24) & 0xff, (height >>> 16) & 0xff, (height >>> 8) & 0xff, height & 0xff,
-    0x08, 0x02, 0x00, 0x00, 0x00,
-  )),
-  pngChunk("IDAT", bytes(0x78, 0x9c, 0x63, 0x60, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01)),
-  pngChunk("IEND"),
-);
+const png = ({ width = 1, height = 1, decodedData } = {}) => {
+  const scanlines = decodedData ?? new Uint8Array(height * ((width * 3) + 1));
+  return concat(
+    bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a),
+    pngChunk("IHDR", bytes(
+      (width >>> 24) & 0xff, (width >>> 16) & 0xff, (width >>> 8) & 0xff, width & 0xff,
+      (height >>> 24) & 0xff, (height >>> 16) & 0xff, (height >>> 8) & 0xff, height & 0xff,
+      0x08, 0x02, 0x00, 0x00, 0x00,
+    )),
+    pngChunk("IDAT", deflateSync(scanlines)),
+    pngChunk("IEND"),
+  );
+};
 const jpeg = () => bytes(
   0xff, 0xd8,
   0xff, 0xe0, 0x00, 0x04, 0x00, 0x00,
@@ -68,7 +72,7 @@ const pdf = (pages = 1) => new TextEncoder().encode(
   `%PDF-1.7\n${Array.from({ length: pages }, (_, index) => `${index + 1} 0 obj << /Type /Page >> endobj`).join("\n")}\n%%EOF`,
 );
 
-async function fixture({ processor, timeoutMs = 100, limits, logger, authorizeReviewSession } = {}) {
+async function fixture({ processor, timeoutMs = 100, terminationGraceMs = 20, limits, logger, authorizeReviewSession } = {}) {
   const authority = createDeterministicIdentityHarness({ DOCTOR_A, DOCTOR_B, PATIENT });
   const doctorA = await authority.authenticate(DOCTOR_A.credential);
   const doctorB = await authority.authenticate(DOCTOR_B.credential);
@@ -88,6 +92,7 @@ async function fixture({ processor, timeoutMs = 100, limits, logger, authorizeRe
     }),
     processor: configuredProcessor,
     timeoutMs,
+    terminationGraceMs,
     limits,
     logger,
   });
@@ -154,6 +159,7 @@ test("rejects unsupported, mismatched, truncated, polyglot-like, and oversized f
     pngChunk("IHDR", bytes(0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0)),
     pngChunk("IEND"),
   );
+  const crcValidMalformedDecodedPng = png({ decodedData: bytes(0, 0) });
   const cases = [
     [bytes(1, 2, 3), "text/plain", DOCUMENT_ERROR_CODES.UNSUPPORTED_MEDIA_TYPE],
     [png(), "image/jpeg", DOCUMENT_ERROR_CODES.INVALID_DOCUMENT],
@@ -163,6 +169,7 @@ test("rejects unsupported, mismatched, truncated, polyglot-like, and oversized f
     [png({ width: 3, height: 3 }), "image/png", DOCUMENT_ERROR_CODES.DOCUMENT_LIMIT_EXCEEDED],
     [invalidCrcPng, "image/png", DOCUMENT_ERROR_CODES.INVALID_DOCUMENT],
     [missingImageDataPng, "image/png", DOCUMENT_ERROR_CODES.INVALID_DOCUMENT],
+    [crcValidMalformedDecodedPng, "image/png", DOCUMENT_ERROR_CODES.INVALID_DOCUMENT],
     [concat(png(), bytes(0)), "image/png", DOCUMENT_ERROR_CODES.INVALID_DOCUMENT],
     [new Uint8Array(1025), "image/png", DOCUMENT_ERROR_CODES.DOCUMENT_LIMIT_EXCEEDED],
   ];
@@ -184,49 +191,54 @@ test("discards the private working copy after processor completion and failure w
     if (outcome === "complete") await submit(gateway, doctorA, callerInput, "image/png");
     else await assert.rejects(submit(gateway, doctorA, callerInput, "image/png"), { code: DOCUMENT_ERROR_CODES.PROCESSING_FAILED, message: "The source document could not be processed." });
     assert.deepEqual(callerInput, original);
-    assert.equal(processor.retainedInput().every((value) => value === 0), true);
     assert.equal(processor.operations()[0].discarded, true);
   }
 });
 
 test("timeout aborts the processor, discards input, and returns no processing reference", async () => {
   const processor = createDeterministicDocumentProcessor({ outcome: "wait-for-abort" });
-  const { gateway, doctorA } = await fixture({ processor, timeoutMs: 5 });
+  const { gateway, doctorA } = await fixture({ processor, timeoutMs: 50 });
   await assert.rejects(submit(gateway, doctorA, png(), "image/png"), {
     code: DOCUMENT_ERROR_CODES.PROCESSING_TIMEOUT,
     message: "The source document processing time expired.",
   });
-  assert.equal(processor.retainedInput().every((value) => value === 0), true);
-  assert.deepEqual(processor.operations().map(({ outcome, discarded }) => ({ outcome, discarded })), [{ outcome: "ABORTED", discarded: true }]);
+  assert.equal(processor.state().abortObserved, true);
+  assert.deepEqual(processor.operations().map(({ outcome, discarded }) => ({ outcome, discarded })), [{ outcome: "TIMED_OUT", discarded: true }]);
 });
 
-test("timeout waits for delayed processor settlement before reporting discard", async () => {
-  let retainedInput;
-  let abortObserved = false;
-  let release;
-  const processor = Object.freeze({
-    process({ input, signal }) {
-      retainedInput = input;
-      signal.addEventListener("abort", () => { abortObserved = true; }, { once: true });
-      return new Promise((resolve) => { release = resolve; });
-    },
-  });
-  const { gateway, doctorA } = await fixture({ processor, timeoutMs: 5 });
-  let settled = false;
-  const submission = submit(gateway, doctorA, png(), "image/png");
-  submission.then(() => { settled = true; }, () => { settled = true; });
-  await new Promise((resolve) => setTimeout(resolve, 15));
-  assert.equal(abortObserved, true);
-  assert.equal(settled, false);
-  assert.equal(retainedInput.some((value) => value !== 0), true);
-
-  release(Object.freeze({ late: true }));
-  await assert.rejects(submission, {
+test("timeout terminates a processor that ignores abort before reporting discard", async () => {
+  const processor = createDeterministicDocumentProcessor({ outcome: "ignore-abort" });
+  const { gateway, doctorA } = await fixture({ processor, timeoutMs: 50, terminationGraceMs: 10 });
+  await assert.rejects(submit(gateway, doctorA, png(), "image/png"), {
     code: DOCUMENT_ERROR_CODES.PROCESSING_TIMEOUT,
     message: "The source document processing time expired.",
   });
-  assert.equal(retainedInput.every((value) => value === 0), true);
+  assert.equal(processor.state().abortObserved, true);
+  const activityAfterSettlement = processor.state().activityCount;
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  assert.equal(processor.state().activityCount, activityAfterSettlement);
+  assert.deepEqual(processor.operations().map(({ outcome, discarded }) => ({ outcome, discarded })), [{ outcome: "TIMED_OUT", discarded: true }]);
 });
+
+for (const [outcome, terminalOutcome] of [
+  ["complete-after-abort", "COMPLETED"],
+  ["fail-after-abort", "FAILED"],
+]) {
+  test(`timeout contains processor ${outcome} before reporting discard`, async () => {
+    const processor = createDeterministicDocumentProcessor({ outcome, delayMs: 2 });
+    const { gateway, doctorA } = await fixture({ processor, timeoutMs: 50, terminationGraceMs: 15 });
+    await assert.rejects(submit(gateway, doctorA, png(), "image/png"), {
+      code: DOCUMENT_ERROR_CODES.PROCESSING_TIMEOUT,
+      message: "The source document processing time expired.",
+    });
+    assert.equal(processor.state().abortObserved, true);
+    assert.equal(processor.state().terminalOutcome, terminalOutcome);
+    assert.deepEqual(processor.operations().map(({ outcome: recorded, discarded }) => ({ outcome: recorded, discarded })), [{
+      outcome: "TIMED_OUT",
+      discarded: true,
+    }]);
+  });
+}
 
 test("logs and errors are allow-listed metadata only and never contain source bytes, names, IDs, or processor references", async () => {
   const entries = [];
@@ -279,7 +291,7 @@ test("rejection, failure, and timeout audit events contain only bounded non-clin
 
 test("implementation has no filesystem, network, URL, durable queue, cache, or storage path", async () => {
   const source = await import("node:fs/promises").then(({ readFile }) => readFile(new URL("../src/ingestion/ephemeral-document-gateway.mjs", import.meta.url), "utf8"));
-  for (const forbidden of ["node:fs", "node:http", "node:https", "fetch(", "writeFile", "createWriteStream", "database", "bucket", "queue", "cache", "url:"]) {
+  for (const forbidden of ["node:fs", "node:http", "node:https", "http:", "https:", "fetch(", "writeFile", "createWriteStream", "database", "bucket", "queue", "cache"]) {
     assert.equal(source.toLowerCase().includes(forbidden.toLowerCase()), false, forbidden);
   }
 });

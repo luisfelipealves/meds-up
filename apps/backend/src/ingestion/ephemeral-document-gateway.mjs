@@ -1,4 +1,6 @@
 import { ERROR_CODES, ROLES } from "@medsup/contracts";
+import { Worker } from "node:worker_threads";
+import { inflateSync } from "node:zlib";
 import { FoundationError } from "../identity/errors.mjs";
 import { createRoleGuard } from "../identity/subject.mjs";
 
@@ -109,11 +111,15 @@ function validatePng(input, limits) {
 
   let offset = PNG_SIGNATURE.length;
   let seenHeader = false;
+  let width;
+  let height;
+  let bitDepth;
   let colorType;
   let seenPalette = false;
   let seenImageData = false;
   let imageDataEnded = false;
   let seenEnd = false;
+  const imageDataChunks = [];
   while (offset < input.byteLength) {
     if (input.byteLength - offset < 12) throw rejected();
     const length = readUint32(input, offset);
@@ -127,7 +133,7 @@ function validatePng(input, limits) {
     const type = pngChunkType(input, typeOffset);
     if (!seenHeader) {
       if (type !== "IHDR" || length !== 13) throw rejected();
-      const bitDepth = input[dataOffset + 8];
+      bitDepth = input[dataOffset + 8];
       colorType = input[dataOffset + 9];
       const validDepths = {
         0: [1, 2, 4, 8, 16],
@@ -140,9 +146,11 @@ function validatePng(input, limits) {
         !validDepths[colorType]?.includes(bitDepth)
         || input[dataOffset + 10] !== 0
         || input[dataOffset + 11] !== 0
-        || ![0, 1].includes(input[dataOffset + 12])
+        || input[dataOffset + 12] !== 0
       ) throw rejected();
-      assertImageLimit(readUint32(input, dataOffset), readUint32(input, dataOffset + 4), limits.maxImagePixels);
+      width = readUint32(input, dataOffset);
+      height = readUint32(input, dataOffset + 4);
+      assertImageLimit(width, height, limits.maxImagePixels);
       seenHeader = true;
     } else if (type === "IHDR") {
       throw rejected();
@@ -152,6 +160,7 @@ function validatePng(input, limits) {
     } else if (type === "IDAT") {
       if (length === 0 || seenEnd || imageDataEnded || (colorType === 3 && !seenPalette)) throw rejected();
       seenImageData = true;
+      imageDataChunks.push(input.subarray(dataOffset, dataEnd));
     } else if (type === "IEND") {
       if (length !== 0 || !seenImageData || seenEnd || chunkEnd !== input.byteLength) throw rejected();
       seenEnd = true;
@@ -163,6 +172,27 @@ function validatePng(input, limits) {
     offset = chunkEnd;
   }
   if (!seenHeader || !seenImageData || !seenEnd) throw rejected();
+
+  const samplesPerPixel = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[colorType];
+  const rowBytes = Math.ceil((width * samplesPerPixel * bitDepth) / 8);
+  const expectedDecodedBytes = height * (rowBytes + 1);
+  if (!Number.isSafeInteger(expectedDecodedBytes)) throw rejected();
+  const compressed = new Uint8Array(imageDataChunks.reduce((total, chunk) => total + chunk.byteLength, 0));
+  let compressedOffset = 0;
+  for (const chunk of imageDataChunks) {
+    compressed.set(chunk, compressedOffset);
+    compressedOffset += chunk.byteLength;
+  }
+  let decoded;
+  try {
+    decoded = inflateSync(compressed, { maxOutputLength: expectedDecodedBytes + 1 });
+  } catch {
+    throw rejected();
+  }
+  if (decoded.byteLength !== expectedDecodedBytes) throw rejected();
+  for (let row = 0; row < height; row += 1) {
+    if (decoded[row * (rowBytes + 1)] > 4) throw rejected();
+  }
 }
 
 function validateJpeg(input, limits) {
@@ -236,10 +266,52 @@ function validateLimits(limits) {
 }
 
 function requireProcessor(processor) {
-  if (typeof processor?.process !== "function") {
-    throw new TypeError("A provider-neutral document processor is required");
+  if (!(processor?.moduleUrl instanceof URL) || processor.moduleUrl.protocol !== "file:") {
+    throw new TypeError("A local provider-neutral document processor module is required");
   }
-  return processor;
+  if (processor.recordLifecycle !== undefined && typeof processor.recordLifecycle !== "function") {
+    throw new TypeError("Processor lifecycle recorder must be a function");
+  }
+  return Object.freeze({
+    moduleUrl: processor.moduleUrl.href,
+    processorData: processor.processorData,
+    recordLifecycle: processor.recordLifecycle,
+  });
+}
+
+function startProcessorWorker(processor, request) {
+  const worker = new Worker(new URL("./document-processor-worker.mjs", import.meta.url), {
+    workerData: Object.freeze({
+      moduleUrl: processor.moduleUrl,
+      processorData: processor.processorData,
+      request,
+    }),
+    transferList: [request.input.buffer],
+  });
+  let exited = false;
+  let resolveExit;
+  let resolveResult;
+  const exitPromise = new Promise((resolve) => { resolveExit = resolve; });
+  const resultPromise = new Promise((resolve) => { resolveResult = resolve; });
+  worker.on("message", (message) => {
+    if (message?.type === "COMPLETED" || message?.type === "FAILED") resolveResult(message.type);
+  });
+  worker.once("error", () => resolveResult("FAILED"));
+  worker.once("exit", () => {
+    exited = true;
+    resolveResult("FAILED");
+    resolveExit();
+  });
+  return Object.freeze({
+    abort() {
+      if (!exited) worker.postMessage(Object.freeze({ type: "ABORT" }));
+    },
+    resultPromise,
+    async terminate() {
+      if (!exited) await worker.terminate();
+      await exitPromise;
+    },
+  });
 }
 
 export function createEphemeralDocumentGateway({
@@ -247,6 +319,7 @@ export function createEphemeralDocumentGateway({
   authorizeReviewSession,
   processor,
   timeoutMs = 30_000,
+  terminationGraceMs = 100,
   limits = DEFAULT_DOCUMENT_LIMITS,
   logger = Object.freeze({ log() {} }),
 } = {}) {
@@ -258,6 +331,9 @@ export function createEphemeralDocumentGateway({
   }
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
     throw new TypeError("timeoutMs must be a positive safe integer");
+  }
+  if (!Number.isSafeInteger(terminationGraceMs) || terminationGraceMs <= 0) {
+    throw new TypeError("terminationGraceMs must be a positive safe integer");
   }
   if (typeof logger?.log !== "function") throw new TypeError("A structured logger is required");
 
@@ -289,35 +365,36 @@ export function createEphemeralDocumentGateway({
         throw error;
       }
 
-      const workingInput = input.slice();
-      const abortController = new AbortController();
+      const workingInput = Uint8Array.from(input);
       let timer;
-      const processorPromise = Promise.resolve().then(() => configuredProcessor.process(Object.freeze({
+      const processorWorker = startProcessorWorker(configuredProcessor, Object.freeze({
         input: workingInput,
         mimeType: declaredMimeType,
-        signal: abortController.signal,
         context: Object.freeze({
           ownerDoctorId: authenticatedDoctor.subjectId,
           reviewSessionId,
         }),
-      })));
+      }));
       const timeoutPromise = new Promise((resolve) => {
         timer = setTimeout(() => {
-          abortController.abort();
           resolve(PROCESSING_TIMEOUT);
         }, timeoutMs);
       });
 
+      let lifecycleOutcome = "FAILED";
       try {
-        const outcome = await Promise.race([processorPromise, timeoutPromise]);
+        const outcome = await Promise.race([processorWorker.resultPromise, timeoutPromise]);
         if (outcome === PROCESSING_TIMEOUT) {
-          try {
-            await processorPromise;
-          } catch {
-            // Cancellation settlement is intentionally hidden from callers.
-          }
+          lifecycleOutcome = "TIMED_OUT";
+          processorWorker.abort();
+          await Promise.race([
+            processorWorker.resultPromise,
+            new Promise((resolve) => setTimeout(resolve, terminationGraceMs)),
+          ]);
           throw timedOut();
         }
+        if (outcome === "FAILED") throw failed();
+        lifecycleOutcome = "COMPLETED";
         logger.log("document.ingestion.completed", {
           action: "INGEST_DOCUMENT",
           outcome: "COMPLETED",
@@ -335,7 +412,15 @@ export function createEphemeralDocumentGateway({
         throw safeError;
       } finally {
         clearTimeout(timer);
-        workingInput.fill(0);
+        await processorWorker.terminate();
+        configuredProcessor.recordLifecycle?.(Object.freeze({
+          ownerDoctorId: authenticatedDoctor.subjectId,
+          reviewSessionId,
+          mimeType: declaredMimeType,
+          byteLength: input.byteLength,
+          outcome: lifecycleOutcome,
+          discarded: true,
+        }));
       }
     },
   });
