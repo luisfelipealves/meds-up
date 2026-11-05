@@ -2,7 +2,7 @@
 id: DEV-006
 type: development
 title: Add OCR extraction proposal adapter
-status: IMPLEMENTED
+status: INTEGRATED
 source: [PD-001, PD-008]
 depends_on: [DEV-005]
 parallel_class: PARALLEL_SAFE
@@ -10,10 +10,15 @@ assigned_agent: developer-dev-006
 branch: agent/dev-006-ocr-proposal-adapter
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-006-ocr-proposal-adapter
 started_at: 2026-11-05T13:05:08Z
-updated_at: 2026-11-05T13:14:18Z
+updated_at: 2026-11-05T13:16:54Z
 implemented_at: 2026-11-05T13:14:18Z
 commit: 8f6d2d1746f6b4d58e756bfbcb59685f94b3d982
 handoff: .ai/development/handoffs/DEV-006-developer-handoff.md
+integration_branch: agent/integration-dev-006
+integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-006
+integrated_at: 2026-11-05T13:16:54Z
+integration_commit: 9d68ac2a8ee04ae7421545fb6c9d254e751d41bf
+integration_handoff: .ai/development/integration/DEV-006-integration-handoff.md
 ---
 
 # Objective
@@ -99,3 +104,17 @@ unchanged. TD-001 remains `OPEN`; DEV-007 was not started.
   **passed**, including Node, PWA, contracts, Android, and Wear checks.
 - `git diff --check` and explicit provider/network/credential/persistence source
   guards: **passed**.
+
+# Integration Summary
+
+The developer branch was fast-forwarded from exact base `cddc9f8` onto
+`agent/integration-dev-006`. Fresh integration validation passed the complete
+Node, Android, and Wear validator, including backend **47/47**, contracts
+**14/14**, and PWA **2/2**. The integrated diff remains provider-neutral and
+local-only; no DEV-005 ingestion code, DEV-007 artifact, real provider,
+credential, network call, persistence path, deployment, or real health data was
+introduced. TD-001 remains `OPEN`.
+
+Complete evidence and review cautions are recorded in
+`.ai/development/integration/DEV-006-integration-handoff.md`. DEV-006 is ready
+for independent review, not merge or push.
