@@ -2,7 +2,7 @@
 id: DEV-005
 type: development
 title: Implement ephemeral source-document processing gateway
-status: BLOCKED
+status: INTEGRATED
 source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-004]
 parallel_class: PARALLEL_SAFE
@@ -10,7 +10,7 @@ assigned_agent: developer-dev-005
 branch: agent/dev-005-ephemeral-ingestion
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-005-ephemeral-ingestion
 started_at: 2026-11-05T09:47:39Z
-updated_at: 2026-11-05T10:03:19Z
+updated_at: 2026-11-05T10:08:51Z
 implemented_at: 2026-11-05T09:53:41Z
 commit: 1dc6fbf835c1667b982d5bd55b94cb915ffc1d74
 handoff: .ai/development/handoffs/DEV-005-developer-handoff.md
@@ -24,6 +24,8 @@ review: .ai/reviews/DEV-005-independent-review.md
 reviewed_commit: 17741f5eb3a3a42172187c90991544e6faff56b3
 review_status: CHANGES_REQUIRED
 review_blocking_findings: 3
+remediation_commit: f06c4b42eec53bba7224b0cb87307b9b81240afe
+remediated_at: 2026-11-05T10:08:51Z
 ---
 
 # Objective
@@ -106,3 +108,15 @@ settlement, injected authorization errors can expose sensitive messages, and
 PNG validation accepts materially malformed structure. DEV-005 is `BLOCKED`
 pending focused remediation and independent re-review. TD-001 remains `OPEN`;
 DEV-006 remains `PLANNED`.
+
+# Review Remediation
+
+Commit `f06c4b42eec53bba7224b0cb87307b9b81240afe` waits for processor
+settlement after timeout-triggered abort before reporting discard, normalizes
+all authorization failures to fixed content-free errors, and validates PNG
+chunk bounds, CRCs, required ordering/data, and image metadata. Adversarial
+tests cover delayed abort settlement, sensitive authorization messages, invalid
+PNG CRCs, missing image data, and trailing bytes. The focused suite passed
+12/12, the backend suite passed 36/36, and the complete Node/Android/Wear
+validator passed. DEV-005 is `INTEGRATED` pending independent re-review; no
+approval is claimed and TD-001 remains `OPEN`.

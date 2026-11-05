@@ -7,7 +7,9 @@ base_commit: 3565d40b6e133bf25c2518ff54869a3b7f8a31ea
 implementation_commit: 1dc6fbf835c1667b982d5bd55b94cb915ffc1d74
 developer_handoff_commit: 05bb95084363ce37dca954003c7e0adfd71fa0d1
 integration_evidence_commit: 52e55a74e4d7150ea39a3a235b700a049b6b7819
+remediation_commit: f06c4b42eec53bba7224b0cb87307b9b81240afe
 integrated_at: 2026-11-05T09:57:28Z
+updated_at: 2026-11-05T10:08:51Z
 architecture_gate: .ai/development/decisions/TD-001-production-health-data-processing-gate.md
 ---
 
@@ -104,3 +106,26 @@ Independent review must inspect this integration branch and this handoff. Keep
 TD-001 open and preserve the no-real-provider/no-production/no-real-health-data
 boundary. This integration result does not authorize merging to `main`, pushing,
 deployment, production activation, or work on DEV-006.
+
+## Independent review remediation
+
+Independent review at `.ai/reviews/DEV-005-independent-review.md` returned
+three blockers. Commit `f06c4b42eec53bba7224b0cb87307b9b81240afe`
+remediates them without adding a production-facing path:
+
+- timeout-triggered abort now waits for processor settlement before reporting
+  timeout and zeroing the gateway-owned source buffer; a delayed-settlement test
+  proves the gateway does not report discard while processor execution remains
+  active;
+- authorization failures are normalized to fixed, content-free shared errors,
+  including arbitrary sensitive adapter messages; and
+- PNG validation now parses bounded chunks, validates CRCs, requires a valid
+  IHDR/IDAT/IEND sequence, enforces palette and image metadata constraints, and
+  rejects missing image data, invalid CRCs, and trailing bytes.
+
+Post-remediation validation passed: focused ingestion 12/12, backend 36/36,
+PWA 2/2, contracts 13/13, all Node build/lint/static checks, and every Android
+and Wear OS assemble/test/lint/check command in `./scripts/validate.sh`.
+`git diff --check` passed. The branch is ready for independent re-review only;
+TD-001 remains `OPEN`, DEV-006 remains `PLANNED`, and no merge, deployment,
+provider, credential, network, or real-health-data authorization is claimed.
