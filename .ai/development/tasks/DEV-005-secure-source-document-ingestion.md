@@ -18,7 +18,7 @@ architecture_gate: .ai/development/decisions/TD-001-production-health-data-proce
 integration_branch: agent/integration-dev-005
 integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-005
 integrated_at: 2026-11-05T09:57:28Z
-integration_commit: PENDING
+integration_commit: 52e55a74e4d7150ea39a3a235b700a049b6b7819
 integration_handoff: .ai/development/integration/DEV-005-integration-handoff.md
 ---
 

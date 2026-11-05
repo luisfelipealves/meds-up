@@ -6,7 +6,7 @@ integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-00
 base_commit: 3565d40b6e133bf25c2518ff54869a3b7f8a31ea
 implementation_commit: 1dc6fbf835c1667b982d5bd55b94cb915ffc1d74
 developer_handoff_commit: 05bb95084363ce37dca954003c7e0adfd71fa0d1
-integration_evidence_commit: PENDING
+integration_evidence_commit: 52e55a74e4d7150ea39a3a235b700a049b6b7819
 integrated_at: 2026-11-05T09:57:28Z
 architecture_gate: .ai/development/decisions/TD-001-production-health-data-processing-gate.md
 ---
