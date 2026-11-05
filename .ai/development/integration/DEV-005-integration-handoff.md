@@ -8,8 +8,11 @@ implementation_commit: 1dc6fbf835c1667b982d5bd55b94cb915ffc1d74
 developer_handoff_commit: 05bb95084363ce37dca954003c7e0adfd71fa0d1
 integration_evidence_commit: 52e55a74e4d7150ea39a3a235b700a049b6b7819
 remediation_commit: f06c4b42eec53bba7224b0cb87307b9b81240afe
+independent_rereview: .ai/reviews/DEV-005-independent-rereview.md
+rereviewed_commit: 5300bc59fc93762165d461553d57953e28241c02
+second_remediation_commit: 94d031d7910825d020a14aee9906b9553f0481f1
 integrated_at: 2026-11-05T09:57:28Z
-updated_at: 2026-11-05T10:08:51Z
+updated_at: 2026-11-05T12:00:56Z
 architecture_gate: .ai/development/decisions/TD-001-production-health-data-processing-gate.md
 ---
 
@@ -129,3 +132,55 @@ and Wear OS assemble/test/lint/check command in `./scripts/validate.sh`.
 `git diff --check` passed. The branch is ready for independent re-review only;
 TD-001 remains `OPEN`, DEV-006 remains `PLANNED`, and no merge, deployment,
 provider, credential, network, or real-health-data authorization is claimed.
+
+## Independent re-review and bounded-lifecycle remediation
+
+Independent re-review at `.ai/reviews/DEV-005-independent-rereview.md` found
+that an abort-ignoring processor could keep `submit()` and source discard
+pending forever, and that the CRC-valid PNG fixture inflated to fewer scanline
+bytes than its IHDR required. Commit
+`94d031d7910825d020a14aee9906b9553f0481f1` remediates both findings:
+
+- the processor contract is now a local module executed in a dedicated Node
+  `Worker`; the gateway transfers its private source copy into that worker,
+  requests cooperative abort on timeout, then enforceably terminates and awaits
+  worker exit before recording discard or settling the caller;
+- deterministic worker tests prove an ignored abort cannot continue activity
+  after settlement and prove completion or failure after abort remains a
+  timeout, with discard recorded only after worker containment; and
+- PNG validation concatenates and inflates IDAT with a bounded output length,
+  calculates the exact non-interlaced scanline bytes from supported IHDR colour
+  type/bit depth metadata, checks each filter byte, and rejects compressed or
+  decoded inconsistency. The positive 1x1 true-colour fixture contains all four
+  decoded bytes; a CRC-valid stream inflating to two bytes is rejected.
+
+No filesystem write, durable store, queue/cache, public URL, HTTP/network call,
+real provider, credential, deployment route, production activation, source
+document, OCR output, or clinical proposal was introduced. JPEG/PDF validation
+remains intentionally shallow and is not represented as parser isolation or a
+production malware boundary.
+
+## Fresh second-remediation validation
+
+- `node --test test/ephemeral-document-ingestion.test.mjs` — **PASSED 14/14**.
+- `npm run build -w @medsup/backend && npm test -w @medsup/backend && npm run lint -w @medsup/backend && npm run static-check -w @medsup/backend`
+  — **PASSED**: backend **38/38**, lint, static **1/1**.
+- `ANDROID_HOME=/home/felipe/.hermes/cache/scratch/android-sdk ANDROID_SDK_ROOT=/home/felipe/.hermes/cache/scratch/android-sdk ./scripts/validate.sh`
+  — **PASSED**: backend **38/38**, PWA **2/2**, contracts **13/13**, all Node
+  builds/lint/static checks, and all Android/Wear assemble, unit-test, lint, and
+  check commands.
+- `git diff --check` — **PASSED**.
+- Source scan over `apps/backend/src/ingestion/*.mjs` for filesystem/network
+  imports and calls, HTTP URLs, durable writes/storage/queue/cache, credentials,
+  and provider/deployment activation — **PASSED**, zero matches.
+- `.ai/reviews/DEV-005-independent-rereview.md` — unchanged; no DEV-006 or
+  `.ai/backups` path changed; `main` and `origin/main` remained at
+  `3565d40b6e133bf25c2518ff54869a3b7f8a31ea`.
+
+## Required next action after second remediation
+
+An independent reviewer must inspect commit
+`94d031d7910825d020a14aee9906b9553f0481f1`, this updated handoff, the actual
+diff, and fresh validation. Keep TD-001 `OPEN`; do not merge or push, start
+DEV-006, select provider/region/network/key infrastructure, deploy, activate a
+production route, or process real health data.

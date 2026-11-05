@@ -10,7 +10,7 @@ assigned_agent: developer-dev-005
 branch: agent/dev-005-ephemeral-ingestion
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-005-ephemeral-ingestion
 started_at: 2026-11-05T09:47:39Z
-updated_at: 2026-11-05T10:08:51Z
+updated_at: 2026-11-05T12:00:56Z
 implemented_at: 2026-11-05T09:53:41Z
 commit: 1dc6fbf835c1667b982d5bd55b94cb915ffc1d74
 handoff: .ai/development/handoffs/DEV-005-developer-handoff.md
@@ -26,6 +26,12 @@ review_status: CHANGES_REQUIRED
 review_blocking_findings: 3
 remediation_commit: f06c4b42eec53bba7224b0cb87307b9b81240afe
 remediated_at: 2026-11-05T10:08:51Z
+independent_rereview: .ai/reviews/DEV-005-independent-rereview.md
+rereviewed_commit: 5300bc59fc93762165d461553d57953e28241c02
+rereview_status: CHANGES_REQUIRED
+rereview_blocking_findings: 2
+second_remediation_commit: 94d031d7910825d020a14aee9906b9553f0481f1
+second_remediated_at: 2026-11-05T12:00:56Z
 ---
 
 # Objective
@@ -120,3 +126,33 @@ PNG CRCs, missing image data, and trailing bytes. The focused suite passed
 12/12, the backend suite passed 36/36, and the complete Node/Android/Wear
 validator passed. DEV-005 is `INTEGRATED` pending independent re-review; no
 approval is claimed and TD-001 remains `OPEN`.
+
+## Independent Re-review and Second Remediation
+
+Independent re-review of `5300bc59fc93762165d461553d57953e28241c02`
+left two blockers: an abort-ignoring in-process processor could hang forever,
+and PNG validation did not inflate IDAT or reconcile decoded scanline length
+with IHDR. Commit `94d031d7910825d020a14aee9906b9553f0481f1`
+remediates both within the local provider-neutral boundary.
+
+Processors now run in a dedicated `Worker` isolation boundary. The private
+source copy is transferred into that worker, timeout first requests cooperative
+abort, and the gateway then terminates and awaits worker exit before it records
+discard or settles the submission. Tests cover ignored abort with continuing
+activity, completion after abort, and failure after abort; all three remain
+timeouts and discard is recorded only after containment. PNG validation now
+supports non-interlaced IHDR metadata, inflates the concatenated IDAT stream
+under an expected-length bound, requires the exact decoded scanline length and
+valid per-row filter bytes, and rejects a CRC-valid stream with insufficient
+decoded bytes. The positive fixture now deflates the complete 1x1 RGB scanline.
+
+Fresh validation passed: focused ingestion **14/14**; backend build and tests
+**38/38**; backend lint and static check; and full `./scripts/validate.sh`,
+including backend **38/38**, PWA **2/2**, contracts **13/13**, all Node
+build/lint/static checks, and Android/Wear assemble, unit-test, lint, and check
+commands. `git diff --check` and the implementation scan for network,
+persistence, URL, queue/cache/storage, and credential paths passed. The review
+artifact was not modified. DEV-005 remains `INTEGRATED` pending independent
+re-review; TD-001 remains `OPEN`, DEV-006 remains `PLANNED`, and no provider,
+region, network, key, deployment, production, or real-health-data path was
+selected or activated.
