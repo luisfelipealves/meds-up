@@ -1,4 +1,5 @@
 import { API_VERSION, ROLES, SCHEMA_VERSION, validateUntrustedPrescriptionProposal } from "@medsup/contracts";
+import { Worker } from "node:worker_threads";
 import { createRoleGuard } from "../identity/subject.mjs";
 
 export const OCR_PROPOSAL_ERROR_CODES = Object.freeze({
@@ -11,6 +12,7 @@ export const OCR_PROPOSAL_ERROR_CODES = Object.freeze({
 
 const MAX_RAW_RESPONSE_BYTES = 256 * 1024;
 const EXACT_EXTRACTION_FIELDS = Object.freeze(["clinicalContent", "confidence", "provenance"]);
+const WORKER_ABORTED = Symbol("worker-aborted");
 
 class OcrProposalError extends Error {
   constructor(code, message) {
@@ -55,10 +57,59 @@ function parseRawExtraction(raw) {
   return parsed;
 }
 
-export function createOcrProposalAdapter({ extractor, providerControls } = {}) {
-  if (typeof extractor?.extract !== "function") {
-    throw new TypeError("A provider-neutral extraction port is required");
+function requireExtractor(extractor) {
+  if (!(extractor?.moduleUrl instanceof URL) || extractor.moduleUrl.protocol !== "file:") {
+    throw new TypeError("A local provider-neutral extraction module is required");
   }
+  for (const callback of ["recordRawResponse", "recordLifecycle"]) {
+    if (extractor[callback] !== undefined && typeof extractor[callback] !== "function") {
+      throw new TypeError(`Extractor ${callback} must be a function`);
+    }
+  }
+  return Object.freeze({
+    moduleUrl: extractor.moduleUrl.href,
+    extractorData: extractor.extractorData,
+    recordRawResponse: extractor.recordRawResponse,
+    recordLifecycle: extractor.recordLifecycle,
+  });
+}
+
+function startExtractorWorker(extractor, request) {
+  const worker = new Worker(new URL("./ocr-extractor-worker.mjs", import.meta.url), {
+    workerData: Object.freeze({
+      moduleUrl: extractor.moduleUrl,
+      extractorData: extractor.extractorData,
+      request,
+    }),
+  });
+  let exited = false;
+  let resolveExit;
+  let resolveResult;
+  const exitPromise = new Promise((resolve) => { resolveExit = resolve; });
+  const resultPromise = new Promise((resolve) => { resolveResult = resolve; });
+  worker.on("message", (message) => {
+    if (message?.type === "COMPLETED" || message?.type === "FAILED") resolveResult(message);
+  });
+  worker.once("error", () => resolveResult(Object.freeze({ type: "FAILED" })));
+  worker.once("exit", () => {
+    exited = true;
+    resolveResult(Object.freeze({ type: "FAILED" }));
+    resolveExit();
+  });
+  return Object.freeze({
+    abort() {
+      if (!exited) worker.postMessage(Object.freeze({ type: "ABORT" }));
+    },
+    resultPromise,
+    async terminate() {
+      if (!exited) await worker.terminate();
+      await exitPromise;
+    },
+  });
+}
+
+export function createOcrProposalAdapter({ extractor, providerControls, terminationGraceMs = 100 } = {}) {
+  const configuredExtractor = requireExtractor(extractor);
   if (
     !hasExactKeys(providerControls, ["retentionDisabled", "trainingDisabled"])
     || providerControls.retentionDisabled !== true
@@ -66,18 +117,47 @@ export function createOcrProposalAdapter({ extractor, providerControls } = {}) {
   ) {
     throw new TypeError("Retention and training must both be explicitly disabled");
   }
+  if (!Number.isSafeInteger(terminationGraceMs) || terminationGraceMs <= 0) {
+    throw new TypeError("terminationGraceMs must be a positive safe integer");
+  }
 
   return Object.freeze({
-    async extract(request) {
+    async extract(request, { signal } = {}) {
+      if (!(signal instanceof AbortSignal)) throw new TypeError("A bounded extraction AbortSignal is required");
+      const extractorWorker = startExtractorWorker(configuredExtractor, request);
       let raw;
+      let abortHandler;
+      const abortedPromise = new Promise((resolve) => {
+        abortHandler = () => resolve(WORKER_ABORTED);
+        if (signal.aborted) abortHandler();
+        else signal.addEventListener("abort", abortHandler, { once: true });
+      });
+      let lifecycleOutcome = "FAILED";
       try {
-        raw = await extractor.extract(request);
-        return structuredClone(parseRawExtraction(raw));
+        const outcome = await Promise.race([extractorWorker.resultPromise, abortedPromise]);
+        if (outcome === WORKER_ABORTED) {
+          lifecycleOutcome = "ABORTED";
+          extractorWorker.abort();
+          await Promise.race([
+            extractorWorker.resultPromise,
+            new Promise((resolve) => setTimeout(resolve, terminationGraceMs)),
+          ]);
+          throw error(OCR_PROPOSAL_ERROR_CODES.SESSION_ENDED);
+        }
+        if (outcome.type !== "COMPLETED") throw error(OCR_PROPOSAL_ERROR_CODES.EXTRACTION_FAILED);
+        raw = outcome.rawResponse;
+        configuredExtractor.recordRawResponse?.(raw);
+        const structured = structuredClone(parseRawExtraction(raw));
+        lifecycleOutcome = "COMPLETED";
+        return structured;
       } catch (cause) {
         if (cause instanceof OcrProposalError) throw cause;
         throw error(OCR_PROPOSAL_ERROR_CODES.EXTRACTION_FAILED);
       } finally {
+        signal.removeEventListener("abort", abortHandler);
+        await extractorWorker.terminate();
         if (raw instanceof Uint8Array) raw.fill(0);
+        configuredExtractor.recordLifecycle?.(Object.freeze({ outcome: lifecycleOutcome, discarded: true }));
       }
     },
   });
@@ -111,6 +191,8 @@ export function createOcrProposalReviewSession({
   let proposal = null;
   let ended = false;
   let inProgress = false;
+  let activeAbortController = null;
+  let expiryTimer = null;
 
   function requireOwner(candidate) {
     try {
@@ -122,20 +204,27 @@ export function createOcrProposalReviewSession({
     }
   }
 
+  function expire() {
+    if (ended) return;
+    proposal = null;
+    ended = true;
+    logger.log("ocr.proposal.discarded", { action: "DISCARD_PROPOSAL", outcome: "TIMED_OUT", failureCategory: "SESSION_ENDED" });
+    activeAbortController?.abort();
+  }
+
   function assertActive() {
-    if (!ended && clock() >= expiresAt) {
-      proposal = null;
-      ended = true;
-      logger.log("ocr.proposal.discarded", { action: "DISCARD_PROPOSAL", outcome: "TIMED_OUT", failureCategory: "SESSION_ENDED" });
-    }
+    if (!ended && clock() >= expiresAt) expire();
     if (ended) throw error(OCR_PROPOSAL_ERROR_CODES.SESSION_ENDED);
   }
 
   function end(candidate) {
     requireOwner(candidate);
+    if (ended) throw error(OCR_PROPOSAL_ERROR_CODES.SESSION_ENDED);
     proposal = null;
     ended = true;
+    if (expiryTimer !== null) clearTimeout(expiryTimer);
     logger.log("ocr.proposal.discarded", { action: "DISCARD_PROPOSAL", outcome: "COMPLETED" });
+    activeAbortController?.abort();
   }
 
   return Object.freeze({
@@ -144,8 +233,13 @@ export function createOcrProposalReviewSession({
       assertActive();
       if (inProgress) throw error(OCR_PROPOSAL_ERROR_CODES.OPERATION_IN_PROGRESS);
       inProgress = true;
+      activeAbortController = new AbortController();
+      expiryTimer = setTimeout(expire, Math.max(0, expiresAt - clock()));
       try {
-        const extracted = await adapter.extract(Object.freeze({ ...request, reviewSessionId }));
+        const extracted = await adapter.extract(
+          Object.freeze({ ...request, reviewSessionId }),
+          Object.freeze({ signal: activeAbortController.signal }),
+        );
         assertActive();
         const generatedAt = new Date(clock()).toISOString();
         proposal = validateUntrustedPrescriptionProposal({
@@ -163,14 +257,21 @@ export function createOcrProposalReviewSession({
         return structuredClone(proposal);
       } catch (cause) {
         proposal = null;
+        const sessionEnded = ended || cause?.code === OCR_PROPOSAL_ERROR_CODES.SESSION_ENDED;
         logger.log("ocr.proposal.failed", {
           action: "EXTRACT_PROPOSAL",
-          outcome: cause?.code === OCR_PROPOSAL_ERROR_CODES.SESSION_ENDED ? "TIMED_OUT" : "FAILED",
-          failureCategory: cause instanceof OcrProposalError ? cause.code : OCR_PROPOSAL_ERROR_CODES.INVALID_RESPONSE,
+          outcome: sessionEnded ? "TIMED_OUT" : "FAILED",
+          failureCategory: sessionEnded
+            ? OCR_PROPOSAL_ERROR_CODES.SESSION_ENDED
+            : (cause instanceof OcrProposalError ? cause.code : OCR_PROPOSAL_ERROR_CODES.INVALID_RESPONSE),
         });
+        if (sessionEnded) throw error(OCR_PROPOSAL_ERROR_CODES.SESSION_ENDED);
         if (cause instanceof OcrProposalError) throw cause;
         throw error(OCR_PROPOSAL_ERROR_CODES.INVALID_RESPONSE);
       } finally {
+        if (expiryTimer !== null) clearTimeout(expiryTimer);
+        expiryTimer = null;
+        activeAbortController = null;
         inProgress = false;
       }
     },

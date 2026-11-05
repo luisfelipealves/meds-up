@@ -11,7 +11,7 @@ const REVIEW_SESSION_ID = "review_session_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const DOCTOR_A = Object.freeze({ subjectId: "doctor-owner-0001", role: ROLES.DOCTOR, credential: Object.freeze({ login: "a@example.invalid", secret: "test-a" }) });
 const DOCTOR_B = Object.freeze({ subjectId: "doctor-owner-0002", role: ROLES.DOCTOR, credential: Object.freeze({ login: "b@example.invalid", secret: "test-b" }) });
 
-async function fixture({ outcomes, expiresAt = 2_000, clockValue = 1_000, extractor, logger } = {}) {
+async function fixture({ outcomes, expiresAt = 2_000, clockValue = 1_000, extractor, logger, terminationGraceMs = 10 } = {}) {
   const identity = createDeterministicIdentityHarness({ DOCTOR_A, DOCTOR_B });
   const doctorA = await identity.authenticate(DOCTOR_A.credential);
   const doctorB = await identity.authenticate(DOCTOR_B.credential);
@@ -20,6 +20,7 @@ async function fixture({ outcomes, expiresAt = 2_000, clockValue = 1_000, extrac
   const adapter = createOcrProposalAdapter({
     extractor: deterministic,
     providerControls: { retentionDisabled: true, trainingDisabled: true },
+    terminationGraceMs,
   });
   const session = createOcrProposalReviewSession({
     subject: doctorA,
@@ -70,28 +71,34 @@ test("provider failure is content-free and retry-safe", async () => {
   assert.equal(extractor.attempts(), 2);
 });
 
-test("expiry during processing and after delivery discards proposal without recovery", async () => {
-  let release;
-  const extractor = {
-    responses: [],
-    async extract() {
-      await new Promise((resolve) => { release = resolve; });
-      const raw = new TextEncoder().encode(JSON.stringify({ clinicalContent: { medications: [{ medicationName: "Example", dose: "1" }] }, provenance: { source: "OCR_AI_EXTRACTION", scope: "SESSION_ONLY" }, confidence: { overall: 0.5 } }));
-      this.responses.push(raw);
-      return raw;
-    },
-  };
-  const first = await fixture({ extractor, expiresAt: 2_000 });
-  const pending = first.session.extract(first.doctorA, {});
-  first.setNow(2_000);
-  release();
-  await assert.rejects(pending, { code: OCR_PROPOSAL_ERROR_CODES.SESSION_ENDED });
-  assert.equal(extractor.responses[0].every((byte) => byte === 0), true);
+test("expiry terminates a never-settling extractor before settlement and leaves no recoverable proposal", async () => {
+  const now = Date.now();
+  const first = await fixture({ outcomes: ["never-settle"], clockValue: now, expiresAt: now + 40 });
+  await assert.rejects(first.session.extract(first.doctorA, {}), { code: OCR_PROPOSAL_ERROR_CODES.SESSION_ENDED });
+  assert.deepEqual(first.extractor.operations(), [{ outcome: "ABORTED", discarded: true }]);
+  const activityAfterSettlement = first.extractor.state().activityCount;
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  assert.equal(first.extractor.state().activityCount, activityAfterSettlement);
+  assert.throws(() => first.session.getProposal(first.doctorA), { code: OCR_PROPOSAL_ERROR_CODES.SESSION_ENDED });
+});
 
+test("expiry after delivery discards the proposal without recovery", async () => {
   const second = await fixture();
   await second.session.extract(second.doctorA, {});
   second.setNow(2_000);
   assert.throws(() => second.session.getProposal(second.doctorA), { code: OCR_PROPOSAL_ERROR_CODES.SESSION_ENDED });
+});
+
+test("abandonment terminates a never-settling extractor and prevents late activity", async () => {
+  const current = await fixture({ outcomes: ["never-settle"] });
+  const pending = current.session.extract(current.doctorA, {});
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  current.session.abandon(current.doctorA);
+  await assert.rejects(pending, { code: OCR_PROPOSAL_ERROR_CODES.SESSION_ENDED });
+  assert.deepEqual(current.extractor.operations(), [{ outcome: "ABORTED", discarded: true }]);
+  const activityAfterSettlement = current.extractor.state().activityCount;
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  assert.equal(current.extractor.state().activityCount, activityAfterSettlement);
 });
 
 test("abandonment, completion, and reload discard proposal permanently", async () => {
