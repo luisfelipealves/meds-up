@@ -2,7 +2,7 @@
 id: DEV-006
 type: development
 title: Add OCR extraction proposal adapter
-status: INTEGRATED
+status: HUMAN_TESTING
 source: [PD-001, PD-008]
 depends_on: [DEV-005]
 parallel_class: PARALLEL_SAFE
@@ -10,7 +10,7 @@ assigned_agent: developer-dev-006
 branch: agent/dev-006-ocr-proposal-adapter
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-006-ocr-proposal-adapter
 started_at: 2026-11-05T13:05:08Z
-updated_at: 2026-11-05T13:24:37Z
+updated_at: 2026-11-05T13:27:07Z
 implemented_at: 2026-11-05T13:14:18Z
 commit: 8f6d2d1746f6b4d58e756bfbcb59685f94b3d982
 handoff: .ai/development/handoffs/DEV-006-developer-handoff.md
@@ -25,6 +25,13 @@ review_status: CHANGES_REQUIRED
 review_blocking_findings: 1
 remediation_commit: c20449a9f3e5b6ea995a50494cf3e8fdd5700dc0
 remediated_at: 2026-11-05T13:24:37Z
+independent_rereview: .ai/reviews/DEV-006-independent-rereview.md
+rereviewed_commit: c8cb9db9fb6e3616265a347300e747d9c0ae2652
+rereview_status: PASS
+rereview_blocking_findings: 0
+rereview_non_blocking_findings: 0
+human_testing_handoff: .ai/development/handoffs/DEV-006-human-testing.md
+human_testing_prepared_at: 2026-11-05T13:27:07Z
 ---
 
 # Objective
@@ -149,3 +156,20 @@ Android/Wear assemble, unit-test, lint, and check tasks in
 `./scripts/validate.sh`. DEV-006 is `INTEGRATED` pending independent re-review.
 TD-001 remains `OPEN`; no provider, credential, network call, real document,
 deployment, merge, push, or DEV-007 work was introduced.
+
+# Independent Re-review and Human Gate
+
+Independent re-review of `c8cb9db9fb6e3616265a347300e747d9c0ae2652`
+passed with zero blocking and zero non-blocking findings. The reviewer verified
+the dedicated-worker containment, expiry and abandonment settlement, raw-byte
+discard, operation-state cleanup, scope, and TD-001 boundary. The reviewer could
+not run one build-authority test in its read-only sandbox because that test
+updates generated `dist/`; the coordinator's fresh writable full validator had
+already passed backend **49/49** and every repository check on unchanged code.
+
+DEV-006 is `HUMAN_TESTING` because it defines untrusted prescription proposal
+lifecycle, health-data discard, and provider retention/training controls, and
+the human explicitly required gates before merge or push. Exact evidence and the
+requested decision are in `.ai/development/handoffs/DEV-006-human-testing.md`.
+TD-001 remains `OPEN`; no merge or push has occurred and DEV-007 remains
+unstarted.
