@@ -2,13 +2,18 @@
 id: DEV-006
 type: development
 title: Add OCR extraction proposal adapter
-status: PLANNED
+status: IMPLEMENTED
 source: [PD-001, PD-008]
 depends_on: [DEV-005]
 parallel_class: PARALLEL_SAFE
-assigned_agent: null
-branch: null
-worktree: null
+assigned_agent: developer-dev-006
+branch: agent/dev-006-ocr-proposal-adapter
+worktree: /home/felipe/projetos/meds-up-worktrees/dev-006-ocr-proposal-adapter
+started_at: 2026-11-05T13:05:08Z
+updated_at: 2026-11-05T13:14:18Z
+implemented_at: 2026-11-05T13:14:18Z
+commit: 8f6d2d1746f6b4d58e756bfbcb59685f94b3d982
+handoff: .ai/development/handoffs/DEV-006-developer-handoff.md
 ---
 
 # Objective
@@ -40,3 +45,57 @@ persistence scans, and proof that proposals cannot enter confirmed state.
 
 # Dependencies
 DEV-005.
+
+# Intake and Implementation Plan
+
+- PD-001 and PD-008 are `APPROVED_FOR_DEVELOPMENT`; DEV-005 is `DONE`, so the
+  declared dependency is satisfied.
+- Add a provider-neutral proposal adapter and deterministic local fake behind
+  the existing isolated ingestion boundary. Extend only the existing
+  `UntrustedPrescriptionProposal` contract as needed for closed, session-only
+  provenance and confidence metadata.
+- Keep proposal state inside one in-memory review-session lifecycle. Explicit
+  expiry, abandonment, completion, or construction of a fresh lifecycle
+  discards the proposal and provides no recovery path.
+- Validate and copy only the structured proposal from the processor response,
+  then erase the mutable raw-response bytes before the extraction call settles.
+  Failures and expiry remain retry-safe and cannot mutate confirmed data.
+- Add focused contract, deterministic fixture, failure, retry, expiry,
+  abandonment/reload, raw-discard, no-confirmation, logging, and forbidden
+  persistence/network/credential-path tests; run backend/contracts suites and
+  the complete repository validator.
+
+# Architecture Boundary
+
+TD-001 remains `OPEN`. This task must not add a concrete OCR/AI provider,
+provider credential, API/network call, provider selection, production ingress,
+deployment or data path, real prescription document, or real health-data test.
+The preference for Vercel, Supabase, or OpenAI is not architecture approval.
+DEV-007 must not start as part of this task.
+
+# Implementation Summary
+
+Implemented a provider-neutral raw-extraction adapter and in-memory doctor
+review-session lifecycle. Valid output is closed, contract-validated, always
+`SESSION_ONLY_UNTRUSTED`, owner/session bound, and includes only session-scoped
+provenance, bounded confidence, and structured clinical content. Mutable raw
+response bytes are zeroed in `finally` before extraction settles. Provider
+configuration requires exact `retentionDisabled: true` and
+`trainingDisabled: true` controls.
+
+Failure, invalid response, expiry during/after extraction, abandonment,
+completion, reload, and cross-owner behavior discard or deny proposal access
+without recovery. The surface has no confirmation/reminder method and no
+persistence, credential, network, concrete provider, deployment, or production
+ingress path. DEV-005 ingestion worker code and containment behavior are
+unchanged. TD-001 remains `OPEN`; DEV-007 was not started.
+
+# Validation Summary
+
+- Focused OCR proposal suite: **9/9 passed**.
+- Backend suite: **47/47 passed**; contracts suite: **14/14 passed**.
+- Backend/contracts build, lint, and backend static check: **passed**.
+- Full `scripts/validate.sh` with the repository Android SDK environment:
+  **passed**, including Node, PWA, contracts, Android, and Wear checks.
+- `git diff --check` and explicit provider/network/credential/persistence source
+  guards: **passed**.
