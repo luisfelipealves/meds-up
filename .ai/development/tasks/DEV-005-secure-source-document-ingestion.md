@@ -2,7 +2,7 @@
 id: DEV-005
 type: development
 title: Implement ephemeral source-document processing gateway
-status: INTEGRATED
+status: BLOCKED
 source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-004]
 parallel_class: PARALLEL_SAFE
@@ -10,7 +10,7 @@ assigned_agent: developer-dev-005
 branch: agent/dev-005-ephemeral-ingestion
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-005-ephemeral-ingestion
 started_at: 2026-11-05T09:47:39Z
-updated_at: 2026-11-05T09:57:28Z
+updated_at: 2026-11-05T10:03:19Z
 implemented_at: 2026-11-05T09:53:41Z
 commit: 1dc6fbf835c1667b982d5bd55b94cb915ffc1d74
 handoff: .ai/development/handoffs/DEV-005-developer-handoff.md
@@ -20,6 +20,10 @@ integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-00
 integrated_at: 2026-11-05T09:57:28Z
 integration_commit: 52e55a74e4d7150ea39a3a235b700a049b6b7819
 integration_handoff: .ai/development/integration/DEV-005-integration-handoff.md
+review: .ai/reviews/DEV-005-independent-review.md
+reviewed_commit: 17741f5eb3a3a42172187c90991544e6faff56b3
+review_status: CHANGES_REQUIRED
+review_blocking_findings: 3
 ---
 
 # Objective
@@ -93,3 +97,12 @@ TD-001 remains `OPEN`; integration does not approve architecture, merge,
 deployment, production operation, or processing of real health data. Complete
 evidence and remaining boundaries are recorded in
 `.ai/development/integration/DEV-005-integration-handoff.md`.
+
+# Independent Review
+
+Independent review of `17741f5eb3a3a42172187c90991544e6faff56b3`
+returned three blocking findings: timeout can return before processor
+settlement, injected authorization errors can expose sensitive messages, and
+PNG validation accepts materially malformed structure. DEV-005 is `BLOCKED`
+pending focused remediation and independent re-review. TD-001 remains `OPEN`;
+DEV-006 remains `PLANNED`.
