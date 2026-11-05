@@ -2,7 +2,7 @@
 id: DEV-005
 type: development
 title: Implement ephemeral source-document processing gateway
-status: INTEGRATED
+status: HUMAN_TESTING
 source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-004]
 parallel_class: PARALLEL_SAFE
@@ -10,7 +10,7 @@ assigned_agent: developer-dev-005
 branch: agent/dev-005-ephemeral-ingestion
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-005-ephemeral-ingestion
 started_at: 2026-11-05T09:47:39Z
-updated_at: 2026-11-05T12:00:56Z
+updated_at: 2026-11-05T12:07:18Z
 implemented_at: 2026-11-05T09:53:41Z
 commit: 1dc6fbf835c1667b982d5bd55b94cb915ffc1d74
 handoff: .ai/development/handoffs/DEV-005-developer-handoff.md
@@ -32,6 +32,14 @@ rereview_status: CHANGES_REQUIRED
 rereview_blocking_findings: 2
 second_remediation_commit: 94d031d7910825d020a14aee9906b9553f0481f1
 second_remediated_at: 2026-11-05T12:00:56Z
+final_review: .ai/reviews/DEV-005-independent-rereview-2.md
+final_reviewed_commit: f21d5f2a791e5d174c4c5bb1302adc2e84bd9c29
+final_review_status: PASS
+final_review_blocking_findings: 0
+final_review_non_blocking_findings: 1
+final_review_commit: 4ca445e8b96416b8eaf779ca4cdb4374b7957c7a
+human_testing_handoff: .ai/development/handoffs/DEV-005-human-testing.md
+human_testing_prepared_at: 2026-11-05T12:07:18Z
 ---
 
 # Objective
@@ -156,3 +164,18 @@ artifact was not modified. DEV-005 remains `INTEGRATED` pending independent
 re-review; TD-001 remains `OPEN`, DEV-006 remains `PLANNED`, and no provider,
 region, network, key, deployment, production, or real-health-data path was
 selected or activated.
+
+## Final Independent Review and Human Gate
+
+The final independent review at
+`.ai/reviews/DEV-005-independent-rereview-2.md` passed with zero blocking and
+one non-blocking finding. A fresh coordinator-run `./scripts/validate.sh` then
+passed all Node, Android, and Wear checks at review commit `4ca445e`.
+
+DEV-005 is `HUMAN_TESTING` because it defines prescription source-document
+discard and security behavior, which falls within the Autonomy Policy's
+clinical/health-data handling and retention/security gate. Exact evidence and
+the requested decision are recorded in
+`.ai/development/handoffs/DEV-005-human-testing.md`. TD-001 remains `OPEN`;
+DEV-006 remains `PLANNED`. No merge, push, provider/region/network/key choice,
+deployment, production activation, or real-health-data operation occurred.
