@@ -1,6 +1,6 @@
 ---
 task: DEV-004
-status: BLOCKED
+status: INTEGRATED
 integration_branch: agent/integration-dev-004
 integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-004
 base_commit: 58065b619d047a59c57e23679035c3de88d7b188
@@ -18,6 +18,10 @@ ready_for_review: true
 approved_review: .ai/reviews/DEV-004-independent-approved-review.md
 approved_review_commit: ccd6d812510a4bbdf0dea021d098182801db8351
 review_status: PASS
+human_approval: .ai/development/handoffs/DEV-004-human-approval.md
+merge_handoff: .ai/development/handoffs/DEV-004-authorized-merge.md
+merge_commit: 37448bb60205e2bff0f732096efc1202c2232019
+merge_status: MERGED_PUSHED
 ---
 
 # Integration handoff — DEV-004

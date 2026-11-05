@@ -2,7 +2,7 @@
 id: DEV-004
 type: development
 title: Enforce doctor ownership isolation
-status: HUMAN_TESTING
+status: DONE
 source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-003]
 parallel_class: SERIAL
@@ -10,8 +10,8 @@ assigned_agent: developer-dev-004
 branch: agent/dev-004-doctor-ownership
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-004-doctor-ownership
 started_at: 2026-11-03T17:28:46Z
-updated_at: 2026-11-03T17:49:45Z
-completed_at: 2026-11-03T17:31:14Z
+updated_at: 2026-11-05T09:11:57Z
+completed_at: 2026-11-05T09:11:57Z
 commit: 5d0adfe4bd980e3706a58d00ca409bd2ca053dd0
 handoff: .ai/development/handoffs/DEV-004-developer-handoff.md
 integration_branch: agent/integration-dev-004
@@ -42,7 +42,10 @@ approved_review_status: PASS
 approved_review_blocking_findings: 0
 approved_review_non_blocking_findings: 0
 human_testing_handoff: .ai/development/handoffs/DEV-004-human-testing.md
-merge_status: NOT_MERGED_HUMAN_GATE
+human_approval: .ai/development/handoffs/DEV-004-human-approval.md
+merge_handoff: .ai/development/handoffs/DEV-004-authorized-merge.md
+merge_commit: 37448bb60205e2bff0f732096efc1202c2232019
+merge_status: MERGED_PUSHED
 ---
 
 # Objective
@@ -107,3 +110,11 @@ Independent final review at
 and zero non-blocking findings. Because DEV-004 changes the authorization policy
 used to isolate real doctor-owned records, the dev-team Autonomy Policy reserves
 merge approval to a human. DEV-004 is in `HUMAN_TESTING` and is not merged.
+
+# Completion
+
+The human explicitly approved the DEV-004 authorization boundary and authorized
+merge plus push for DEV-004 only. Fresh independent review found zero findings,
+the complete Node/Android/Wear validator passed, and `main` fast-forwarded to
+`37448bb60205e2bff0f732096efc1202c2232019`. The push to `origin/main` was read
+back at the same commit. DEV-004 is `DONE`; DEV-005 was not started.

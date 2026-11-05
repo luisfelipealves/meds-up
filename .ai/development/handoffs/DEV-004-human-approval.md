@@ -1,14 +1,17 @@
 ---
 task: DEV-004
 type: human-approval
-status: APPROVED_MERGE_AND_PUSH_AUTHORIZED
+status: APPROVED_COMPLETED
 branch: agent/integration-dev-004
 approved_head: af8409e50bebf5e51fff08972549400ef12554d7
 human_approved_at: 2026-11-05T09:11:05Z
 approval_scope: DEV-004_AUTHORIZATION_BOUNDARY
 merge_target: main
 push_target: origin/main
-merge_status: AUTHORIZED_PENDING_VERIFICATION
+merge_commit: 37448bb60205e2bff0f732096efc1202c2232019
+merged_at: 2026-11-05T09:11:57Z
+pushed_at: 2026-11-05T09:11:57Z
+merge_status: MERGED_PUSHED
 ---
 
 # Human approval — DEV-004
@@ -29,3 +32,11 @@ This approval applies only to DEV-004. It does not authorize DEV-005, deployment
 - The integration worktree was clean, and `main` plus `origin/main` both resolved to `58065b619d047a59c57e23679035c3de88d7b188` before the approval record was committed.
 
 The earlier fresh-validator failure was environmental only: the scratch Android SDK had been pruned. The SDK was restored at the previously documented location and the same complete validator then passed.
+
+## Completion
+
+`git merge --ff-only agent/integration-dev-004` advanced `main` from
+`58065b619d047a59c57e23679035c3de88d7b188` to
+`37448bb60205e2bff0f732096efc1202c2232019`. A normal `git push origin main`
+completed, and fetch/read-back confirmed local and remote `main` at the same
+commit. The pre-existing untracked `.ai/backups/` directory remained unmodified.

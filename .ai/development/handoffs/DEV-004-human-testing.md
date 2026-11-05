@@ -1,6 +1,6 @@
 ---
 task: DEV-004
-status: HUMAN_TESTING
+status: DONE
 integration_branch: agent/integration-dev-004
 integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-004
 base_commit: 58065b619d047a59c57e23679035c3de88d7b188
@@ -10,7 +10,10 @@ workflow_head_before_handoff: ccd6d812510a4bbdf0dea021d098182801db8351
 approved_review: .ai/reviews/DEV-004-independent-approved-review.md
 approved_review_commit: ccd6d812510a4bbdf0dea021d098182801db8351
 validation_status: PASSED
-merge_status: NOT_MERGED_HUMAN_GATE
+human_approval: .ai/development/handoffs/DEV-004-human-approval.md
+merge_handoff: .ai/development/handoffs/DEV-004-authorized-merge.md
+merge_commit: 37448bb60205e2bff0f732096efc1202c2232019
+merge_status: MERGED_PUSHED
 prepared_at: 2026-11-03T17:49:45Z
 ---
 
@@ -49,3 +52,10 @@ This task has no user interface or real provider adapter. The narrow manual gate
 ## Human decision required
 
 DEV-004 changes the authorization policy for doctor-owned records. Under the dev-team Autonomy Policy, real user authorization changes require explicit human approval before merge. If the boundary and evidence are accepted, authorize merge of `agent/integration-dev-004` into `main`. No merge or push has occurred.
+
+## Decision outcome
+
+The human explicitly approved the authorization boundary and authorized merge
+plus push for DEV-004 only. After fresh independent review and a passing complete
+validator, `main` was fast-forwarded and `origin/main` was verified at
+`37448bb60205e2bff0f732096efc1202c2232019`. DEV-005 was not started.
