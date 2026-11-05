@@ -8,6 +8,8 @@ implementation_commit: 8f6d2d1746f6b4d58e756bfbcb59685f94b3d982
 developer_handoff_commit: 9d68ac2a8ee04ae7421545fb6c9d254e751d41bf
 integrated_head_before_evidence: 9d68ac2a8ee04ae7421545fb6c9d254e751d41bf
 integrated_at: 2026-11-05T13:16:54Z
+updated_at: 2026-11-05T13:24:37Z
+remediation_commit: c20449a9f3e5b6ea995a50494cf3e8fdd5700dc0
 architecture_gate: .ai/development/decisions/TD-001-production-health-data-processing-gate.md
 architecture_gate_status: OPEN
 ---
@@ -105,3 +107,40 @@ DEV-006 changes health-data proposal lifecycle, retention/discard, and provider
 control behavior. Under the dev-team Autonomy Policy and the human's explicit
 instruction, independent review and a human approval gate are required before
 any merge to `main` or push. This branch is ready only for independent review.
+
+## Blocking review and remediation
+
+Independent review at `.ai/reviews/DEV-006-independent-review.md` found one
+blocker: an injected extractor that never settled could keep extraction pending
+beyond session expiry or abandonment. Commit
+`c20449a9f3e5b6ea995a50494cf3e8fdd5700dc0` remediates the lifecycle without
+crossing TD-001.
+
+Each extraction now executes in a dedicated local Node worker loaded only from
+a `file:` module. The session supplies a required bounded `AbortSignal`. Expiry
+or explicit abandonment marks the lifecycle ended, requests cooperative abort,
+then the adapter terminates and awaits worker exit before the caller settles.
+Any transferred raw response remains bounded mutable bytes and is zeroed before
+settlement. A worker that ignores abort is therefore contained and cannot keep
+processing or retaining response data after settlement.
+
+The deterministic fake now also runs inside that worker boundary. New tests use
+a never-settling, activity-producing extractor and prove both expiry and
+abandonment settle with `SESSION_ENDED`, leave no recoverable proposal, record
+discard only after containment, and stop all worker activity after settlement.
+
+Fresh post-remediation validation passed:
+
+- focused OCR proposal suite: **11/11**;
+- complete backend suite: **49/49**;
+- contracts **14/14** and PWA **2/2**;
+- all Node build, lint, and static checks;
+- all Android and Wear assemble, unit-test, lint, and check tasks in the full
+  repository validator;
+- `git diff --check`; and
+- source guards for concrete providers, network, credentials, persistence,
+  confirmation, and reminder paths.
+
+DEV-006 is integrated pending independent re-review. TD-001 remains `OPEN`;
+there is still no real provider, API/network call, credential, prescription
+document, production path, deployment, merge, push, or DEV-007 work.

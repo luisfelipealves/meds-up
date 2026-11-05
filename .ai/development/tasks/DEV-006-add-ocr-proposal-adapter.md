@@ -2,7 +2,7 @@
 id: DEV-006
 type: development
 title: Add OCR extraction proposal adapter
-status: BLOCKED
+status: INTEGRATED
 source: [PD-001, PD-008]
 depends_on: [DEV-005]
 parallel_class: PARALLEL_SAFE
@@ -10,19 +10,21 @@ assigned_agent: developer-dev-006
 branch: agent/dev-006-ocr-proposal-adapter
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-006-ocr-proposal-adapter
 started_at: 2026-11-05T13:05:08Z
-updated_at: 2026-11-05T13:20:03Z
+updated_at: 2026-11-05T13:24:37Z
 implemented_at: 2026-11-05T13:14:18Z
 commit: 8f6d2d1746f6b4d58e756bfbcb59685f94b3d982
 handoff: .ai/development/handoffs/DEV-006-developer-handoff.md
 integration_branch: agent/integration-dev-006
 integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-006
 integrated_at: 2026-11-05T13:16:54Z
-integration_commit: 9d68ac2a8ee04ae7421545fb6c9d254e751d41bf
+integration_commit: c20449a9f3e5b6ea995a50494cf3e8fdd5700dc0
 integration_handoff: .ai/development/integration/DEV-006-integration-handoff.md
 review: .ai/reviews/DEV-006-independent-review.md
 reviewed_commit: dd056babcb0425e2d134d7d60fd7882b7a9a0a29
 review_status: CHANGES_REQUIRED
 review_blocking_findings: 1
+remediation_commit: c20449a9f3e5b6ea995a50494cf3e8fdd5700dc0
+remediated_at: 2026-11-05T13:24:37Z
 ---
 
 # Objective
@@ -131,3 +133,19 @@ operation pending beyond expiry or abandonment. DEV-006 is `BLOCKED` pending a
 bounded, enforceably contained extraction lifecycle, a never-settling regression
 test, fresh validation, and independent re-review. TD-001 remains `OPEN`; no
 merge or push is authorized.
+
+# Review Remediation
+
+Commit `c20449a9f3e5b6ea995a50494cf3e8fdd5700dc0` moves each local
+extraction into a dedicated worker, requires a bounded `AbortSignal`, and on
+expiry or abandonment requests cooperative abort, terminates and awaits the
+worker, discards any transferred raw bytes, and only then settles the caller.
+Never-settling expiry and abandonment tests prove worker activity cannot
+continue after settlement and no proposal can be recovered.
+
+Fresh validation passed: focused OCR proposal **11/11**, backend **49/49**,
+contracts **14/14**, PWA **2/2**, all Node build/lint/static checks, and all
+Android/Wear assemble, unit-test, lint, and check tasks in
+`./scripts/validate.sh`. DEV-006 is `INTEGRATED` pending independent re-review.
+TD-001 remains `OPEN`; no provider, credential, network call, real document,
+deployment, merge, push, or DEV-007 work was introduced.
