@@ -28,14 +28,34 @@ const PATIENT = Object.freeze({
 const REVIEW_SESSION_ID = "review_session_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 const bytes = (...values) => Uint8Array.from(values);
-const png = ({ width = 1, height = 1 } = {}) => bytes(
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-  0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
-  (width >>> 24) & 0xff, (width >>> 16) & 0xff, (width >>> 8) & 0xff, width & 0xff,
-  (height >>> 24) & 0xff, (height >>> 16) & 0xff, (height >>> 8) & 0xff, height & 0xff,
-  0x08, 0x02, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+const concat = (...arrays) => Uint8Array.from(arrays.flatMap((array) => [...array]));
+function crc32(input) {
+  let crc = 0xffffffff;
+  for (const value of input) {
+    crc ^= value;
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+function pngChunk(type, data = bytes()) {
+  const typeBytes = new TextEncoder().encode(type);
+  const crc = crc32(concat(typeBytes, data));
+  return concat(
+    bytes((data.length >>> 24) & 0xff, (data.length >>> 16) & 0xff, (data.length >>> 8) & 0xff, data.length & 0xff),
+    typeBytes,
+    data,
+    bytes((crc >>> 24) & 0xff, (crc >>> 16) & 0xff, (crc >>> 8) & 0xff, crc & 0xff),
+  );
+}
+const png = ({ width = 1, height = 1 } = {}) => concat(
+  bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a),
+  pngChunk("IHDR", bytes(
+    (width >>> 24) & 0xff, (width >>> 16) & 0xff, (width >>> 8) & 0xff, width & 0xff,
+    (height >>> 24) & 0xff, (height >>> 16) & 0xff, (height >>> 8) & 0xff, height & 0xff,
+    0x08, 0x02, 0x00, 0x00, 0x00,
+  )),
+  pngChunk("IDAT", bytes(0x78, 0x9c, 0x63, 0x60, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01)),
+  pngChunk("IEND"),
 );
 const jpeg = () => bytes(
   0xff, 0xd8,
@@ -48,7 +68,7 @@ const pdf = (pages = 1) => new TextEncoder().encode(
   `%PDF-1.7\n${Array.from({ length: pages }, (_, index) => `${index + 1} 0 obj << /Type /Page >> endobj`).join("\n")}\n%%EOF`,
 );
 
-async function fixture({ processor, timeoutMs = 100, limits, logger } = {}) {
+async function fixture({ processor, timeoutMs = 100, limits, logger, authorizeReviewSession } = {}) {
   const authority = createDeterministicIdentityHarness({ DOCTOR_A, DOCTOR_B, PATIENT });
   const doctorA = await authority.authenticate(DOCTOR_A.credential);
   const doctorB = await authority.authenticate(DOCTOR_B.credential);
@@ -57,7 +77,7 @@ async function fixture({ processor, timeoutMs = 100, limits, logger } = {}) {
   const configuredProcessor = processor ?? createDeterministicDocumentProcessor();
   const gateway = createEphemeralDocumentGateway({
     assertAuthenticatedSubject: authority.assertAuthenticatedSubject,
-    authorizeReviewSession(subject, reviewSessionId) {
+    authorizeReviewSession: authorizeReviewSession ?? ((subject, reviewSessionId) => {
       authorizations.push({ subjectId: subject.subjectId, reviewSessionId });
       if (reviewSessionId !== REVIEW_SESSION_ID || subject.subjectId !== DOCTOR_A.subjectId) {
         const error = new Error("The resource was not found.");
@@ -65,7 +85,7 @@ async function fixture({ processor, timeoutMs = 100, limits, logger } = {}) {
         throw error;
       }
       return Object.freeze({ id: reviewSessionId, status: "ACTIVE" });
-    },
+    }),
     processor: configuredProcessor,
     timeoutMs,
     limits,
@@ -109,8 +129,31 @@ test("rejects unauthenticated, non-doctor, and cross-doctor submissions before h
   assert.deepEqual(processor.operations(), []);
 });
 
+test("normalizes arbitrary authorization failures to content-free errors", async () => {
+  const sentinel = "CLINICAL_AUTHORIZATION_DETAIL_MUST_NOT_ESCAPE";
+  const { gateway, doctorA, processor } = await fixture({
+    authorizeReviewSession() {
+      throw new Error(sentinel);
+    },
+  });
+  await assert.rejects(
+    submit(gateway, doctorA, png(), "image/png"),
+    (error) => error.code === "NOT_FOUND"
+      && error.message === "The resource was not found."
+      && !error.message.includes(sentinel),
+  );
+  assert.deepEqual(processor.operations(), []);
+});
+
 test("rejects unsupported, mismatched, truncated, polyglot-like, and oversized files with content-free errors", async () => {
   const { gateway, doctorA, processor } = await fixture({ limits: { maxBytes: 1024, maxPdfPages: 2, maxImagePixels: 4 } });
+  const invalidCrcPng = png();
+  invalidCrcPng[invalidCrcPng.length - 1] ^= 1;
+  const missingImageDataPng = concat(
+    bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a),
+    pngChunk("IHDR", bytes(0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0)),
+    pngChunk("IEND"),
+  );
   const cases = [
     [bytes(1, 2, 3), "text/plain", DOCUMENT_ERROR_CODES.UNSUPPORTED_MEDIA_TYPE],
     [png(), "image/jpeg", DOCUMENT_ERROR_CODES.INVALID_DOCUMENT],
@@ -118,6 +161,9 @@ test("rejects unsupported, mismatched, truncated, polyglot-like, and oversized f
     [new TextEncoder().encode("%PDF-1.7\n/Type /Page\n%%EOF\n<script>"), "application/pdf", DOCUMENT_ERROR_CODES.INVALID_DOCUMENT],
     [pdf(3), "application/pdf", DOCUMENT_ERROR_CODES.DOCUMENT_LIMIT_EXCEEDED],
     [png({ width: 3, height: 3 }), "image/png", DOCUMENT_ERROR_CODES.DOCUMENT_LIMIT_EXCEEDED],
+    [invalidCrcPng, "image/png", DOCUMENT_ERROR_CODES.INVALID_DOCUMENT],
+    [missingImageDataPng, "image/png", DOCUMENT_ERROR_CODES.INVALID_DOCUMENT],
+    [concat(png(), bytes(0)), "image/png", DOCUMENT_ERROR_CODES.INVALID_DOCUMENT],
     [new Uint8Array(1025), "image/png", DOCUMENT_ERROR_CODES.DOCUMENT_LIMIT_EXCEEDED],
   ];
   for (const [input, declaredMimeType, code] of cases) {
@@ -152,6 +198,34 @@ test("timeout aborts the processor, discards input, and returns no processing re
   });
   assert.equal(processor.retainedInput().every((value) => value === 0), true);
   assert.deepEqual(processor.operations().map(({ outcome, discarded }) => ({ outcome, discarded })), [{ outcome: "ABORTED", discarded: true }]);
+});
+
+test("timeout waits for delayed processor settlement before reporting discard", async () => {
+  let retainedInput;
+  let abortObserved = false;
+  let release;
+  const processor = Object.freeze({
+    process({ input, signal }) {
+      retainedInput = input;
+      signal.addEventListener("abort", () => { abortObserved = true; }, { once: true });
+      return new Promise((resolve) => { release = resolve; });
+    },
+  });
+  const { gateway, doctorA } = await fixture({ processor, timeoutMs: 5 });
+  let settled = false;
+  const submission = submit(gateway, doctorA, png(), "image/png");
+  submission.then(() => { settled = true; }, () => { settled = true; });
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  assert.equal(abortObserved, true);
+  assert.equal(settled, false);
+  assert.equal(retainedInput.some((value) => value !== 0), true);
+
+  release(Object.freeze({ late: true }));
+  await assert.rejects(submission, {
+    code: DOCUMENT_ERROR_CODES.PROCESSING_TIMEOUT,
+    message: "The source document processing time expired.",
+  });
+  assert.equal(retainedInput.every((value) => value === 0), true);
 });
 
 test("logs and errors are allow-listed metadata only and never contain source bytes, names, IDs, or processor references", async () => {

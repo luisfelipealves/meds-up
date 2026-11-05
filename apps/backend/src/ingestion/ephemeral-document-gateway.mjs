@@ -1,4 +1,5 @@
-import { ROLES } from "@medsup/contracts";
+import { ERROR_CODES, ROLES } from "@medsup/contracts";
+import { FoundationError } from "../identity/errors.mjs";
 import { createRoleGuard } from "../identity/subject.mjs";
 
 export const DOCUMENT_ERROR_CODES = Object.freeze({
@@ -23,7 +24,12 @@ const MEDIA_TYPES = Object.freeze({
 const PDF_HEADER = "%PDF-";
 const PDF_END = "%%EOF";
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-const PNG_END = [0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82];
+const AUTHORIZATION_ERRORS = Object.freeze({
+  [ERROR_CODES.INVALID_AUTHENTICATED_SUBJECT]: "The authenticated subject is invalid.",
+  [ERROR_CODES.ROLE_FORBIDDEN]: "The authenticated role is not permitted.",
+  [ERROR_CODES.NOT_FOUND]: "The resource was not found.",
+});
+const PROCESSING_TIMEOUT = Symbol("processing-timeout");
 
 class DocumentGatewayError extends Error {
   constructor(code, message) {
@@ -51,6 +57,11 @@ function timedOut() {
   );
 }
 
+function authorizationRejected(error) {
+  const code = Object.hasOwn(AUTHORIZATION_ERRORS, error?.code) ? error.code : ERROR_CODES.NOT_FOUND;
+  return new FoundationError(code, AUTHORIZATION_ERRORS[code]);
+}
+
 function matchesAt(input, expected, offset = 0) {
   return expected.every((value, index) => input[offset + index] === value);
 }
@@ -62,6 +73,21 @@ function readUint32(input, offset) {
     + (input[offset + 2] << 8)
     + input[offset + 3]
   );
+}
+
+function crc32(input, start, end) {
+  let crc = 0xffffffff;
+  for (let offset = start; offset < end; offset += 1) {
+    crc ^= input[offset];
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngChunkType(input, offset) {
+  return String.fromCharCode(input[offset], input[offset + 1], input[offset + 2], input[offset + 3]);
 }
 
 function assertImageLimit(width, height, maxImagePixels) {
@@ -79,15 +105,64 @@ function assertImageLimit(width, height, maxImagePixels) {
 }
 
 function validatePng(input, limits) {
-  if (
-    input.byteLength < 45
-    || !matchesAt(input, PNG_SIGNATURE)
-    || !matchesAt(input, [0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52], 8)
-    || !matchesAt(input, PNG_END, input.byteLength - PNG_END.length)
-  ) {
-    throw rejected();
+  if (input.byteLength < 57 || !matchesAt(input, PNG_SIGNATURE)) throw rejected();
+
+  let offset = PNG_SIGNATURE.length;
+  let seenHeader = false;
+  let colorType;
+  let seenPalette = false;
+  let seenImageData = false;
+  let imageDataEnded = false;
+  let seenEnd = false;
+  while (offset < input.byteLength) {
+    if (input.byteLength - offset < 12) throw rejected();
+    const length = readUint32(input, offset);
+    const typeOffset = offset + 4;
+    const dataOffset = typeOffset + 4;
+    const dataEnd = dataOffset + length;
+    const chunkEnd = dataEnd + 4;
+    if (!Number.isSafeInteger(dataEnd) || chunkEnd > input.byteLength) throw rejected();
+    if (readUint32(input, dataEnd) !== crc32(input, typeOffset, dataEnd)) throw rejected();
+
+    const type = pngChunkType(input, typeOffset);
+    if (!seenHeader) {
+      if (type !== "IHDR" || length !== 13) throw rejected();
+      const bitDepth = input[dataOffset + 8];
+      colorType = input[dataOffset + 9];
+      const validDepths = {
+        0: [1, 2, 4, 8, 16],
+        2: [8, 16],
+        3: [1, 2, 4, 8],
+        4: [8, 16],
+        6: [8, 16],
+      };
+      if (
+        !validDepths[colorType]?.includes(bitDepth)
+        || input[dataOffset + 10] !== 0
+        || input[dataOffset + 11] !== 0
+        || ![0, 1].includes(input[dataOffset + 12])
+      ) throw rejected();
+      assertImageLimit(readUint32(input, dataOffset), readUint32(input, dataOffset + 4), limits.maxImagePixels);
+      seenHeader = true;
+    } else if (type === "IHDR") {
+      throw rejected();
+    } else if (type === "PLTE") {
+      if (seenPalette || seenImageData || length === 0 || length > 768 || length % 3 !== 0) throw rejected();
+      seenPalette = true;
+    } else if (type === "IDAT") {
+      if (length === 0 || seenEnd || imageDataEnded || (colorType === 3 && !seenPalette)) throw rejected();
+      seenImageData = true;
+    } else if (type === "IEND") {
+      if (length !== 0 || !seenImageData || seenEnd || chunkEnd !== input.byteLength) throw rejected();
+      seenEnd = true;
+    } else if (seenEnd || !/^[A-Za-z]{4}$/.test(type) || type[0] === type[0].toUpperCase()) {
+      throw rejected();
+    } else if (seenImageData) {
+      imageDataEnded = true;
+    }
+    offset = chunkEnd;
   }
-  assertImageLimit(readUint32(input, 16), readUint32(input, 20), limits.maxImagePixels);
+  if (!seenHeader || !seenImageData || !seenEnd) throw rejected();
 }
 
 function validateJpeg(input, limits) {
@@ -199,7 +274,7 @@ export function createEphemeralDocumentGateway({
           mediaType: MEDIA_TYPES[declaredMimeType] ?? "UNKNOWN",
           failureCategory: "AUTHORIZATION_REJECTED",
         });
-        throw error;
+        throw authorizationRejected(error);
       }
 
       try {
@@ -226,15 +301,23 @@ export function createEphemeralDocumentGateway({
           reviewSessionId,
         }),
       })));
-      const timeoutPromise = new Promise((resolve, reject) => {
+      const timeoutPromise = new Promise((resolve) => {
         timer = setTimeout(() => {
-          reject(timedOut());
           abortController.abort();
+          resolve(PROCESSING_TIMEOUT);
         }, timeoutMs);
       });
 
       try {
-        await Promise.race([processorPromise, timeoutPromise]);
+        const outcome = await Promise.race([processorPromise, timeoutPromise]);
+        if (outcome === PROCESSING_TIMEOUT) {
+          try {
+            await processorPromise;
+          } catch {
+            // Cancellation settlement is intentionally hidden from callers.
+          }
+          throw timedOut();
+        }
         logger.log("document.ingestion.completed", {
           action: "INGEST_DOCUMENT",
           outcome: "COMPLETED",
