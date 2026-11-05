@@ -2,7 +2,7 @@
 id: DEV-005
 type: development
 title: Implement ephemeral source-document processing gateway
-status: IMPLEMENTED
+status: INTEGRATED
 source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-004]
 parallel_class: PARALLEL_SAFE
@@ -10,11 +10,16 @@ assigned_agent: developer-dev-005
 branch: agent/dev-005-ephemeral-ingestion
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-005-ephemeral-ingestion
 started_at: 2026-11-05T09:47:39Z
-updated_at: 2026-11-05T09:53:41Z
+updated_at: 2026-11-05T09:57:28Z
 implemented_at: 2026-11-05T09:53:41Z
 commit: 1dc6fbf835c1667b982d5bd55b94cb915ffc1d74
 handoff: .ai/development/handoffs/DEV-005-developer-handoff.md
 architecture_gate: .ai/development/decisions/TD-001-production-health-data-processing-gate.md
+integration_branch: agent/integration-dev-005
+integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-005
+integrated_at: 2026-11-05T09:57:28Z
+integration_commit: PENDING
+integration_handoff: .ai/development/integration/DEV-005-integration-handoff.md
 ---
 
 # Objective
@@ -73,3 +78,18 @@ and was not started.
 
 Detailed TDD evidence, files, integration cautions, and validation commands are
 recorded in `.ai/development/handoffs/DEV-005-developer-handoff.md`.
+
+# Integration Summary
+
+The exact implementation and developer-handoff commits were fast-forwarded
+onto `agent/integration-dev-005` from base `3565d40`. Independent integration
+validation passed the focused 10-test ingestion suite, the complete 34-test
+backend suite, backend lint/static checks, and the full repository validation
+including Node workspaces plus Android and Wear OS builds, tests, lint, and
+checks. The inspected diff adds no real network/provider/deployment/credential
+or durable source-document path and changes neither DEV-006 nor `.ai/backups`.
+
+TD-001 remains `OPEN`; integration does not approve architecture, merge,
+deployment, production operation, or processing of real health data. Complete
+evidence and remaining boundaries are recorded in
+`.ai/development/integration/DEV-005-integration-handoff.md`.
