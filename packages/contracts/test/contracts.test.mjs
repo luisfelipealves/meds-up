@@ -15,6 +15,7 @@ import {
   parsePrescriptionVersionResponse,
   prescriptionVersionPath,
   validateAuditReference,
+  validatePrescriptionAuditRecord,
   createErrorEnvelope,
   validateErrorEnvelope
 } from "../src/index.mjs";
@@ -146,6 +147,21 @@ test("confirmed prescription and immutable version expose ownership, status, and
   assert.deepEqual(validatePrescriptionVersion(validVersion), validVersion);
   assert.throws(() => validateConfirmedPrescription({ ...validPrescription, lifecycle: "SESSION_ONLY_UNTRUSTED" }), ContractValidationError);
   assert.throws(() => validatePrescriptionVersion({ ...validVersion, confirmedByDoctorId: undefined }), ContractValidationError);
+});
+
+test("complete prescription audit records validate actor, clock, and version/resource linkage", () => {
+  const audit = {
+    apiVersion: "v1", schemaVersion: 1, auditReferenceId: "aud_01JBR6PK2M8V4X7N1Q5T9C3AZ",
+    eventType: "DOCTOR_CONFIRMATION", outcome: "COMPLETED", actorDoctorId: validPrescription.ownerDoctorId,
+    occurredAt: "2026-11-03T16:01:00Z", securityCorrelationId: "cor_01JBR6Q8N4M2X7K5T9V1P3AZ",
+    prescriptionId: validPrescription.prescriptionId, prescriptionVersion: 1,
+    previousPrescriptionVersion: null, resourceVersion: 1,
+  };
+  assert.deepEqual(validatePrescriptionAuditRecord(audit), audit);
+  assert.throws(() => validatePrescriptionAuditRecord({ ...audit, actorDoctorId: "bad" }), ContractValidationError);
+  assert.throws(() => validatePrescriptionAuditRecord({ ...audit, occurredAt: "not-a-clock" }), ContractValidationError);
+  assert.throws(() => validatePrescriptionAuditRecord({ ...audit, previousPrescriptionVersion: 0 }), ContractValidationError);
+  assert.throws(() => validatePrescriptionAuditRecord({ ...audit, prescriptionVersion: 2 }), ContractValidationError);
 });
 
 const validStatusCommand = {

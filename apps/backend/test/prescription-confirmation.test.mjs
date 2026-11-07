@@ -23,7 +23,7 @@ function deterministicIds() {
   return (kind) => `${kind}_${String(++value).padStart(24, "0")}`;
 }
 
-async function fixture() {
+async function fixture({ createId = deterministicIds(), clock = () => Date.parse("2026-11-07T14:00:00Z"), confirmationBoundary } = {}) {
   const authority = createDeterministicIdentityHarness(IDENTITIES);
   const doctorA = await authority.authenticate(IDENTITIES.DOCTOR_A.credential);
   const doctorB = await authority.authenticate(IDENTITIES.DOCTOR_B.credential);
@@ -33,17 +33,26 @@ async function fixture() {
   const repository = createInMemoryConfirmedPrescriptionRepository();
   const service = createPrescriptionConfirmationService({
     assertAuthenticatedSubject: authority.assertAuthenticatedSubject,
-    authorizeReviewSession(subject, reviewSessionId) {
-      if (sessions.get(reviewSessionId) !== subject.subjectId) throw new Error("not found");
-    },
-    completeReviewSession(subject, reviewSessionId) {
-      if (sessions.get(reviewSessionId) !== subject.subjectId) throw new Error("not found");
-      sessions.delete(reviewSessionId);
-      completed.push(reviewSessionId);
-    },
+    confirmationBoundary: confirmationBoundary ?? Object.freeze({
+      synchronous: true,
+      confirmAtomically({ actor, reviewSessionId, prepare }) {
+        if (sessions.get(reviewSessionId) !== actor.subjectId) throw Object.assign(new Error("not found"), { code: "NOT_FOUND" });
+        const prepared = prepare();
+        if (typeof prepared?.commit !== "function" || typeof prepared?.rollback !== "function") throw new TypeError("malformed prepared confirmation");
+        try {
+          const outcome = prepared.commit();
+          sessions.delete(reviewSessionId);
+          completed.push(reviewSessionId);
+          return outcome;
+        } catch (error) {
+          prepared.rollback();
+          throw error;
+        }
+      },
+    }),
     repository,
-    clock: () => Date.parse("2026-11-07T14:00:00Z"),
-    createId: deterministicIds(),
+    clock,
+    createId,
   });
   return { service, repository, doctorA, doctorB, patient, completed };
 }
@@ -207,4 +216,60 @@ test("suspension and cancellation emit monotonic downstream events and cancellat
   assert.deepEqual(service.listStatusEvents(doctorA, id).map(({ status: value }) => value), ["SUSPENDED", "CANCELLED"]);
   await assert.rejects(() => service.transitionStatus(doctorA, status(id, doctorA.subjectId, 3, "SUSPENDED")), errorCode("CONFLICT"));
   await assert.rejects(() => service.changeClinicalContent(doctorA, change(id, doctorA.subjectId, 3)), errorCode("CONFLICT"));
+});
+
+test("prepared persistence failure leaves the review session active and retryable", async () => {
+  let fail = true;
+  const boundary = Object.freeze({
+    synchronous: true,
+    confirmAtomically({ prepare }) {
+      const prepared = prepare();
+      if (fail) {
+        fail = false;
+        throw new Error("synthetic persistence failure before commit");
+      }
+      const outcome = prepared.commit();
+      return outcome;
+    },
+  });
+  const { service, doctorA } = await fixture({ confirmationBoundary: boundary });
+  const command = confirmation(doctorA.subjectId);
+  await assert.rejects(() => service.confirm(doctorA, command), /synthetic persistence failure/);
+  const retry = await service.confirm(doctorA, command);
+  assert.equal(retry.prescription.currentPrescriptionVersion, 1);
+  assert.equal(service.listPrescriptions(doctorA).length, 1);
+});
+
+test("malformed clock and generated identifiers fail before session consumption", async () => {
+  let clockCalls = 0;
+  const clock = () => (++clockCalls === 1 ? Number.NaN : Date.parse("2026-11-07T14:00:00Z"));
+  const createId = (kind) => kind === "audit" ? "bad" : `${kind}_01JBR4N9V2Q8K6M3F7X5T1C0AZ`;
+  const { service, doctorA } = await fixture({ clock, createId });
+  const command = confirmation(doctorA.subjectId);
+  await assert.rejects(() => service.confirm(doctorA, command), /Clock must return/);
+  await assert.rejects(() => service.confirm(doctorA, command), /Generated identifiers/);
+  assert.deepEqual(service.listPrescriptions(doctorA), []);
+});
+
+test("duplicate generated identifiers and audit linkage are rejected before commit", async () => {
+  const duplicate = () => "dup_01JBR4N9V2Q8K6M3F7X5T1C0AZ";
+  const { service, doctorA } = await fixture({ createId: duplicate });
+  await assert.rejects(() => service.confirm(doctorA, confirmation(doctorA.subjectId)), errorCode("CONFLICT"));
+  assert.deepEqual(service.listPrescriptions(doctorA), []);
+
+  const valid = await fixture();
+  const result = await valid.service.confirm(valid.doctorA, confirmation(valid.doctorA.subjectId));
+  assert.equal(result.audit.prescriptionId, result.prescription.prescriptionId);
+  assert.equal(result.audit.prescriptionVersion, result.version.prescriptionVersion);
+  assert.equal(result.audit.resourceVersion, result.prescription.resourceVersion);
+});
+
+test("concurrent different-key confirmation attempts consume one session exactly once", async () => {
+  const { service, doctorA } = await fixture();
+  const first = confirmation(doctorA.subjectId, { idempotencyKey: "idem_confirmation_first_0001" });
+  const second = confirmation(doctorA.subjectId, { idempotencyKey: "idem_confirmation_second_0002", correctedClinicalContent: CONTENT_2 });
+  const outcomes = await Promise.allSettled([service.confirm(doctorA, first), service.confirm(doctorA, second)]);
+  assert.equal(outcomes.filter(({ status }) => status === "fulfilled").length, 1);
+  assert.equal(outcomes.filter(({ status }) => status === "rejected").length, 1);
+  assert.equal(service.listPrescriptions(doctorA).length, 1);
 });

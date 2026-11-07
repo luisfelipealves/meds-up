@@ -182,6 +182,23 @@
         "securityCorrelationId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }
       }
     },
+    "PrescriptionAuditRecord": {
+      "type": "object", "additionalProperties": false,
+      "required": ["apiVersion", "schemaVersion", "auditReferenceId", "eventType", "outcome", "actorDoctorId", "occurredAt", "securityCorrelationId", "prescriptionId", "prescriptionVersion", "previousPrescriptionVersion", "resourceVersion"],
+      "properties": {
+        "apiVersion": { "const": "v1" }, "schemaVersion": { "const": 1 },
+        "auditReferenceId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
+        "eventType": { "enum": ["DOCTOR_CONFIRMATION", "PRESCRIPTION_CLINICAL_CHANGE", "PRESCRIPTION_STATUS_CHANGE"] },
+        "outcome": { "const": "COMPLETED" },
+        "actorDoctorId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
+        "occurredAt": { "type": "string", "format": "date-time" },
+        "securityCorrelationId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
+        "prescriptionId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
+        "prescriptionVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "previousPrescriptionVersion": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }] },
+        "resourceVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+      }
+    },
     "ErrorEnvelope": {
       "type": "object",
       "additionalProperties": false,

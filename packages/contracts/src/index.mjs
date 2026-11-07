@@ -305,6 +305,31 @@ export function validateAuditReference(value) {
   });
 }
 
+export function validatePrescriptionAuditRecord(value) {
+  const record = validateObject("PrescriptionAuditRecord", value, {
+    apiVersion: (candidate) => candidate === API_VERSION,
+    schemaVersion: (candidate) => candidate === SCHEMA_VERSION,
+    auditReferenceId: isOpaqueId,
+    eventType: (candidate) => ["DOCTOR_CONFIRMATION", "PRESCRIPTION_CLINICAL_CHANGE", "PRESCRIPTION_STATUS_CHANGE"].includes(candidate),
+    outcome: (candidate) => candidate === "COMPLETED",
+    actorDoctorId: isOpaqueId,
+    occurredAt: isTimestamp,
+    securityCorrelationId: isOpaqueId,
+    prescriptionId: isOpaqueId,
+    prescriptionVersion: isPositiveInteger,
+    previousPrescriptionVersion: (candidate) => candidate === null || isPositiveInteger(candidate),
+    resourceVersion: isPositiveInteger,
+  });
+  if ((record.prescriptionVersion === 1 && record.previousPrescriptionVersion !== null)
+    || (record.prescriptionVersion > 1 && record.previousPrescriptionVersion !== record.prescriptionVersion - 1)
+    || record.resourceVersion < record.prescriptionVersion) {
+    throw new ContractValidationError("PrescriptionAuditRecord", [
+      { path: "prescriptionVersion", code: "INVALID_LINKAGE", message: "version linkage is inconsistent" }
+    ]);
+  }
+  return record;
+}
+
 export function validateErrorEnvelope(value) {
   return validateObject("ErrorEnvelope", value, {
     apiVersion: (candidate) => candidate === API_VERSION,

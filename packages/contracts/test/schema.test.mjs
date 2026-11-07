@@ -8,6 +8,7 @@ import {
   ERROR_CODES,
   createErrorEnvelope,
   validateAuditReference,
+  validatePrescriptionAuditRecord,
   validateConfirmedPrescription,
   validateDoctorConfirmationCommand,
   validateEphemeralDocumentInput,
@@ -46,6 +47,7 @@ test("published v1 schemas are closed, versioned, and provider-neutral", async (
     Object.keys(schema.$defs).sort(),
     [
       "AuditReference",
+      "PrescriptionAuditRecord",
       "ConfirmedPrescription",
       "DoctorConfirmationCommand",
       "EphemeralDocumentInput",
@@ -93,6 +95,7 @@ test("schema fixtures match executable validators for every published contract",
     PrescriptionStatusCommand: [{ apiVersion: "v1", schemaVersion: 1, idempotencyKey: "idem_01JBR6D8P4N7X2K9M5Q0T3V1AZ", prescriptionId, ownerDoctorId: doctorId, expectedResourceVersion: 1, targetStatus: "SUSPENDED", requestedAt: "2026-11-03T16:00:00Z" }, validatePrescriptionStatusCommand],
     PrescriptionStatusEvent: [{ apiVersion: "v1", schemaVersion: 1, eventId: "evt_01JBR6G2X8M4K7N1Q5T9V3P0AZ", prescriptionId, prescriptionVersion: 1, previousStatus: "ACTIVE", status: "SUSPENDED", resourceVersion: 2, serverVersion: 42, occurredAt: "2026-11-03T16:00:01Z" }, validatePrescriptionStatusEvent],
     AuditReference: [{ apiVersion: "v1", schemaVersion: 1, auditReferenceId: "aud_01JBR6PK2M8V4X7N1Q5T9C3AZ", eventType: "EPHEMERAL_EXTRACTION", outcome: "COMPLETED", occurredAt: "2026-11-03T16:01:00Z", securityCorrelationId: "cor_01JBR6Q8N4M2X7K5T9V1P3AZ" }, validateAuditReference],
+    PrescriptionAuditRecord: [{ apiVersion: "v1", schemaVersion: 1, auditReferenceId: "aud_01JBR6PK2M8V4X7N1Q5T9C3AZ", eventType: "DOCTOR_CONFIRMATION", outcome: "COMPLETED", actorDoctorId: doctorId, occurredAt: "2026-11-03T16:01:00Z", securityCorrelationId: "cor_01JBR6Q8N4M2X7K5T9V1P3AZ", prescriptionId, prescriptionVersion: 1, previousPrescriptionVersion: null, resourceVersion: 1 }, validatePrescriptionAuditRecord],
     ErrorEnvelope: [createErrorEnvelope("INTERNAL_ERROR", "req_01JBR6V2N8M4X7K5T9Q1P3AZ"), validateErrorEnvelope],
   };
 

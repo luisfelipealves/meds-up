@@ -9,6 +9,7 @@ Provider-neutral v1 prescription and API contracts. The package contains executa
 - `DoctorConfirmationCommand` requires `decision: CONFIRMED`, the confirming doctor to match the owner, corrected structured content, and an idempotency key. `PrescriptionClinicalChangeCommand` applies the same explicit-confirmation gate to later clinical changes and additionally requires an expected resource version.
 - `ConfirmedPrescription` and `PrescriptionVersion` are the only confirmed domain records. They use opaque IDs, UTC timestamps with offsets, positive resource/prescription versions, explicit ownership, and immutable doctor-confirmed clinical versions.
 - `AuditReference` permits only an allow-listed event type, coarse outcome, timestamp, and opaque security correlation. It contains no clinical or provider content.
+- `PrescriptionAuditRecord` is the complete immutable confirmation/change/status audit record: it requires the trusted doctor actor, server timestamp, generated audit/correlation IDs, and prescription/version/resource linkage. It is distinct from the narrower `AuditReference`.
 
 Private patient reminder-response history is not represented by this package. Clinical scheduling grammar is intentionally deferred to DEV-011.
 

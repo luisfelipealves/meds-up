@@ -10,6 +10,7 @@ import {
   validatePrescriptionStatusCommand,
   validatePrescriptionStatusEvent,
   validatePrescriptionVersion,
+  validatePrescriptionAuditRecord,
 } from "@medsup/contracts";
 import { FoundationError } from "../identity/errors.mjs";
 import { createRoleGuard } from "../identity/subject.mjs";
@@ -36,7 +37,7 @@ function fingerprint(value) {
 
 function requireRepository(repository) {
   for (const method of [
-    "confirm",
+    "prepareConfirmation",
     "replayConfirmation",
     "changeClinicalContent",
     "transitionStatus",
@@ -76,16 +77,24 @@ function requireTimestamp(clock) {
 
 export function createPrescriptionConfirmationService({
   assertAuthenticatedSubject,
-  authorizeReviewSession,
-  completeReviewSession,
+  confirmationBoundary,
   repository,
   clock = Date.now,
   createId,
 } = {}) {
   const requireRole = createRoleGuard(assertAuthenticatedSubject);
   const confirmedRepository = requireRepository(repository);
-  if (typeof authorizeReviewSession !== "function") throw new TypeError("An active review-session authorizer is required");
-  if (typeof completeReviewSession !== "function") throw new TypeError("A review-session completion boundary is required");
+  // This is a trusted synchronous transaction capability, not two ordered calls:
+  // prepare must be side-effect free, commit must be rollback-capable, and the
+  // capability must atomically coordinate session consumption with persistence.
+  // A durable adapter must implement the same obligation in its database
+  // transaction; this in-memory implementation is not a production adapter.
+  if (typeof confirmationBoundary?.confirmAtomically !== "function" || confirmationBoundary.synchronous !== true) {
+    throw new TypeError("A synchronous atomic confirmation boundary is required");
+  }
+  if (confirmationBoundary.confirmAtomically.constructor?.name === "AsyncFunction") {
+    throw new TypeError("The atomic confirmation boundary must be synchronous");
+  }
   if (typeof clock !== "function") throw new TypeError("A clock is required");
   if (typeof createId !== "function") throw new TypeError("A provider-neutral identifier generator is required");
 
@@ -114,25 +123,19 @@ export function createPrescriptionConfirmationService({
         clinicalContent: clone(command.correctedClinicalContent),
       }));
       if (replayed !== null) return clone(replayed);
-      try {
-        authorizeReviewSession(actor, command.reviewSessionId);
-      } catch {
-        throw failure(ERROR_CODES.NOT_FOUND);
-      }
-      try {
-        const completion = completeReviewSession(actor, command.reviewSessionId);
-        if (completion instanceof Promise) throw new TypeError("Review-session completion must be synchronous");
-      } catch {
-        throw failure(ERROR_CODES.CONFLICT);
-      }
-      const outcome = confirmedRepository.confirm(Object.freeze({
+      const outcome = confirmationBoundary.confirmAtomically(Object.freeze({
+        actor,
+        reviewSessionId: command.reviewSessionId,
+        prepare: () => confirmedRepository.prepareConfirmation(Object.freeze({
         ownerDoctorId: actor.subjectId,
         reviewSessionId: command.reviewSessionId,
         idempotencyKey: command.idempotencyKey,
         clinicalContent: clone(command.correctedClinicalContent),
         occurredAt: requireTimestamp(clock),
         ids: ids(),
+        })),
       }));
+      if (outcome instanceof Promise) throw new TypeError("The atomic confirmation boundary returned asynchronously");
       return clone(outcome.result);
     },
 
@@ -198,6 +201,7 @@ export function createInMemoryConfirmedPrescriptionRepository() {
   const confirmedSessions = new Map();
   const idempotency = new Map();
   let serverVersion = 0;
+  const usedIds = new Set();
 
   function owned(prescriptionId, ownerDoctorId) {
     const prescription = prescriptions.get(prescriptionId);
@@ -224,7 +228,7 @@ export function createInMemoryConfirmedPrescriptionRepository() {
   }
 
   function audit({ ids, eventType, ownerDoctorId, occurredAt, prescriptionId, prescriptionVersion, previousPrescriptionVersion, resourceVersion }) {
-    return Object.freeze({
+    const record = {
       apiVersion: API_VERSION,
       schemaVersion: SCHEMA_VERSION,
       auditReferenceId: ids.auditReferenceId,
@@ -237,7 +241,33 @@ export function createInMemoryConfirmedPrescriptionRepository() {
       prescriptionVersion,
       previousPrescriptionVersion,
       resourceVersion,
-    });
+    };
+    return Object.freeze(validatePrescriptionAuditRecord(record));
+  }
+
+  function validateGeneratedIds(ids) {
+    const values = Object.values(ids);
+    if (values.some((value) => typeof value !== "string" || !/^[A-Za-z0-9_-]{16,128}$/.test(value))) {
+      throw new TypeError("Generated identifiers must be opaque IDs");
+    }
+    if (new Set(values).size !== values.length || values.some((value) => usedIds.has(value))) throw failure(ERROR_CODES.CONFLICT);
+  }
+
+  function snapshot() {
+    return { prescriptions: clone(prescriptions), versions: clone(versions), audits: clone(audits), statusEvents: clone(statusEvents), confirmedSessions: clone(confirmedSessions), idempotency: clone(idempotency), usedIds: clone(usedIds), serverVersion };
+  }
+
+  function restore(state) {
+    for (const map of [prescriptions, versions, audits, statusEvents, confirmedSessions, idempotency]) map.clear();
+    for (const [key, value] of state.prescriptions) prescriptions.set(key, value);
+    for (const [key, value] of state.versions) versions.set(key, value);
+    for (const [key, value] of state.audits) audits.set(key, value);
+    for (const [key, value] of state.statusEvents) statusEvents.set(key, value);
+    for (const [key, value] of state.confirmedSessions) confirmedSessions.set(key, value);
+    for (const [key, value] of state.idempotency) idempotency.set(key, value);
+    usedIds.clear();
+    for (const value of state.usedIds) usedIds.add(value);
+    serverVersion = state.serverVersion;
   }
 
   function append(map, key, value) {
@@ -255,7 +285,7 @@ export function createInMemoryConfirmedPrescriptionRepository() {
       return repeated === null ? null : clone(repeated.result);
     },
 
-    confirm(input) {
+    prepareConfirmation(input) {
       const payload = {
         operation: "CONFIRM",
         reviewSessionId: input.reviewSessionId,
@@ -264,6 +294,7 @@ export function createInMemoryConfirmedPrescriptionRepository() {
       const repeated = replay(input.ownerDoctorId, input.idempotencyKey, payload);
       if (repeated !== null) return repeated;
       if (confirmedSessions.has(input.reviewSessionId)) throw failure(ERROR_CODES.CONFLICT);
+      validateGeneratedIds(input.ids);
 
       const prescription = validateConfirmedPrescription({
         apiVersion: API_VERSION,
@@ -303,12 +334,20 @@ export function createInMemoryConfirmedPrescriptionRepository() {
         auditReferenceId: auditEvent.auditReferenceId,
       });
       const result = Object.freeze({ prescription: clone(prescription), version: clone(version), audit: clone(auditEvent) });
-      prescriptions.set(prescription.prescriptionId, Object.freeze(clone(prescription)));
-      versions.set(prescription.prescriptionId, Object.freeze([Object.freeze(clone(version))]));
-      audits.set(prescription.prescriptionId, Object.freeze([auditEvent]));
-      statusEvents.set(prescription.prescriptionId, Object.freeze([]));
-      confirmedSessions.set(input.reviewSessionId, prescription.prescriptionId);
-      return remember(input.ownerDoctorId, input.idempotencyKey, payload, result);
+      const before = snapshot();
+      return Object.freeze({
+        result: clone(result),
+        commit() {
+          prescriptions.set(prescription.prescriptionId, Object.freeze(clone(prescription)));
+          versions.set(prescription.prescriptionId, Object.freeze([Object.freeze(clone(version))]));
+          audits.set(prescription.prescriptionId, Object.freeze([auditEvent]));
+          statusEvents.set(prescription.prescriptionId, Object.freeze([]));
+          confirmedSessions.set(input.reviewSessionId, prescription.prescriptionId);
+          for (const id of Object.values(input.ids)) usedIds.add(id);
+          return remember(input.ownerDoctorId, input.idempotencyKey, payload, result);
+        },
+        rollback() { restore(before); },
+      });
     },
 
     changeClinicalContent(input) {
@@ -321,6 +360,7 @@ export function createInMemoryConfirmedPrescriptionRepository() {
       const repeated = replay(input.ownerDoctorId, input.idempotencyKey, payload);
       if (repeated !== null) return repeated;
       const current = owned(input.prescriptionId, input.ownerDoctorId);
+      validateGeneratedIds(input.ids);
       if (current.status === "CANCELLED") throw failure(ERROR_CODES.CONFLICT);
       if (current.resourceVersion !== input.expectedResourceVersion) throw failure(ERROR_CODES.STALE_RESOURCE_VERSION);
 
@@ -359,6 +399,7 @@ export function createInMemoryConfirmedPrescriptionRepository() {
       prescriptions.set(input.prescriptionId, prescription);
       append(versions, input.prescriptionId, version);
       append(audits, input.prescriptionId, auditEvent);
+      for (const id of Object.values(input.ids)) usedIds.add(id);
       return remember(input.ownerDoctorId, input.idempotencyKey, payload, result);
     },
 
@@ -372,6 +413,7 @@ export function createInMemoryConfirmedPrescriptionRepository() {
       const repeated = replay(input.ownerDoctorId, input.idempotencyKey, payload);
       if (repeated !== null) return repeated;
       const current = owned(input.prescriptionId, input.ownerDoctorId);
+      validateGeneratedIds(input.ids);
       if (current.resourceVersion !== input.expectedResourceVersion) throw failure(ERROR_CODES.STALE_RESOURCE_VERSION);
       const transition = `${current.status}->${input.targetStatus}`;
       if (!["ACTIVE->SUSPENDED", "ACTIVE->CANCELLED", "SUSPENDED->CANCELLED"].includes(transition)) {
@@ -396,7 +438,7 @@ export function createInMemoryConfirmedPrescriptionRepository() {
         ...input,
         eventType: "PRESCRIPTION_STATUS_CHANGE",
         prescriptionVersion: current.currentPrescriptionVersion,
-        previousPrescriptionVersion: current.currentPrescriptionVersion,
+        previousPrescriptionVersion: null,
         resourceVersion: nextResourceVersion,
       });
       const prescription = Object.freeze(validateConfirmedPrescription({
@@ -409,6 +451,7 @@ export function createInMemoryConfirmedPrescriptionRepository() {
       prescriptions.set(input.prescriptionId, prescription);
       append(statusEvents, input.prescriptionId, statusEvent);
       append(audits, input.prescriptionId, auditEvent);
+      for (const id of Object.values(input.ids)) usedIds.add(id);
       return remember(input.ownerDoctorId, input.idempotencyKey, payload, result);
     },
 
