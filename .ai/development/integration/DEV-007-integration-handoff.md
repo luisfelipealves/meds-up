@@ -140,5 +140,5 @@ and complete Node tests passed (backend 60/60, PWA 2/2, contracts 16/16), as did
 `npm run lint`, `npm run build`, `make test`, `make lint`, `make build`, the
 full `./scripts/validate.sh` Node/Android/Wear matrix, and `git diff --check`.
 The focused remediation implementation is commit
-`a7cc7261c31f1bfae96c08e6783664c079b7bbfa`; the following workflow-only commit
+`a7cc726ef3102f7203059ecdfbefe6f34f301a4a`; the following workflow-only commit
 records this corrected evidence for exact-head independent rereview.

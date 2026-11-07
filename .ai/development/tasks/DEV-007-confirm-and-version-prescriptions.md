@@ -2,7 +2,7 @@
 id: DEV-007
 type: development
 title: Confirm and version prescriptions
-status: INTEGRATED
+status: HUMAN_TESTING
 source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-004, DEV-006]
 parallel_class: SERIAL
@@ -10,7 +10,7 @@ assigned_agent: developer-dev-007
 branch: agent/dev-007-confirm-version-prescriptions
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-007-confirm-version-prescriptions
 started_at: 2026-11-07T13:24:13Z
-updated_at: 2026-11-07T13:52:24Z
+updated_at: 2026-11-07T13:57:44Z
 completed_at: 2026-11-07T13:33:27Z
 implementation_commit: 2e28ccc1f5f06fe965c340d6ebc9a590effec4cd
 handoff: .ai/development/handoffs/DEV-007-developer-handoff.md
@@ -21,15 +21,15 @@ integrated_developer_head: 2f9cc2b90c9f56abeef7b1e2b6136c4472dc185c
 integrated_at: 2026-11-07T13:37:43Z
 integration_handoff: .ai/development/integration/DEV-007-integration-handoff.md
 integration_evidence_commit: this file's commit
-review: .ai/reviews/DEV-007-independent-review.md
-reviewed_commit: 2438120ae1c4a8cd0d0090af5c1c327594502731
-review_status: REMEDIATED_PENDING_REREVIEW
+review: .ai/reviews/DEV-007-independent-rereview.md
+reviewed_commit: 26816b5ec37b3dc9421e5d446b84d621e70a43f7
+review_status: PASS
 review_blocking_findings: 0
 review_non_blocking_findings: 0
 remediation_metadata: .ai/development/handoffs/DEV-007-review-remediation.md
-remediation_commit: a7cc7261c31f1bfae96c08e6783664c079b7bbfa
+remediation_commit: a7cc726ef3102f7203059ecdfbefe6f34f301a4a
 remediated_at: 2026-11-07T13:52:24Z
-overall_status: INTEGRATED
+overall_status: HUMAN_TESTING
 ---
 
 # Objective

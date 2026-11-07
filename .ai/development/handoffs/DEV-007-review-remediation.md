@@ -4,7 +4,7 @@ status: REMEDIATED_PENDING_REREVIEW
 overall_status: INTEGRATED
 review_status: REMEDIATED_PENDING_REREVIEW
 blocking_findings_remaining: 0
-remediation_commit: a7cc7261c31f1bfae96c08e6783664c079b7bbfa
+remediation_commit: a7cc726ef3102f7203059ecdfbefe6f34f301a4a
 remediated_at: 2026-11-07T13:52:24Z
 architecture_gate: .ai/development/decisions/TD-001-production-health-data-processing-gate.md
 ---
@@ -82,12 +82,12 @@ real document or health data, production persistence/deployment, or
 region/network/key decision was introduced. The in-memory repository and
 deterministic synthetic tests remain local/provider-neutral. The parent
 coordinator reran the complete writable suite and committed the focused
-implementation as `a7cc7261c31f1bfae96c08e6783664c079b7bbfa`.
+implementation as `a7cc726ef3102f7203059ecdfbefe6f34f301a4a`.
 
 ## Rereview instructions
 
 Independent review must inspect exact implementation commit
-`a7cc7261c31f1bfae96c08e6783664c079b7bbfa` plus the following workflow-only
+`a7cc726ef3102f7203059ecdfbefe6f34f301a4a` plus the following workflow-only
 commit containing this handoff, and verify B1/B2, focused adversarial tests,
 the full diff, and validation evidence. Keep overall status `INTEGRATED`; do
 not merge or push. Do not begin the human gate until the fresh independent
