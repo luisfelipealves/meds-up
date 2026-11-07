@@ -2,15 +2,15 @@
 id: DEV-008
 type: development
 title: Implement claim-token lifecycle
-status: HUMAN_TESTING
+status: DONE
 source: [PD-001, PD-002]
 depends_on: [DEV-002, DEV-003, DEV-004, DEV-007]
 parallel_class: SERIAL
 assigned_agent: developer-dev-008
-branch: agent/integration-dev-008
-worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-008
+branch: agent/integration-dev-008-20261107T155405Z-3493200
+worktree: /home/felipe/.hermes/cache/scratch/meds-up-integration-dev-008-20261107T155405Z-3493200
 started_at: 2026-11-07T15:00:57Z
-updated_at: 2026-11-07T15:20:07Z
+updated_at: 2026-11-07T15:57:12Z
 completed_at: 2026-11-07T15:06:10Z
 implementation_commit: db84d511605ada98976a528743cccef89477d2c8
 handoff: .ai/development/handoffs/DEV-008-developer-handoff.md
@@ -27,6 +27,10 @@ remediation_status: B1_REMEDIATED
 remediated_at: 2026-11-07T15:16:09Z
 remediation_commit: 25ccea1c27c8ac04a203318cd33cc1bf0176bee5
 human_testing_handoff: .ai/development/handoffs/DEV-008-human-testing.md
+approved_candidate: 479db3c9a00b887dc8c82d40dec4793532c8c79d
+merged_main_commit: 479db3c9a00b887dc8c82d40dec4793532c8c79d
+completion_handoff: .ai/development/handoffs/DEV-008-authorized-merge.md
+done_at: 2026-11-07T15:57:12Z
 ---
 
 # Objective
@@ -69,3 +73,11 @@ DEV-002, DEV-003, DEV-004, and DEV-007.
 
 See `.ai/development/handoffs/DEV-008-developer-handoff.md` for exact files,
 validation evidence, limitations, and integration constraints.
+
+# Completion
+
+The human-authorized exact candidate
+`479db3c9a00b887dc8c82d40dec4793532c8c79d` was fast-forwarded on the isolated
+integration branch and pushed normally to `origin/main`. Remote read-back and
+complete pre-push and post-push validation passed. Canonical completion evidence
+is in `.ai/development/handoffs/DEV-008-authorized-merge.md`.

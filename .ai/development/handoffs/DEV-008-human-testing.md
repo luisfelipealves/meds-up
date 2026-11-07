@@ -1,15 +1,19 @@
 ---
 task: DEV-008
-status: HUMAN_TESTING
-branch: agent/integration-dev-008
-worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-008
+status: APPROVED_MERGED
+branch: agent/integration-dev-008-20261107T155405Z-3493200
+worktree: /home/felipe/.hermes/cache/scratch/meds-up-integration-dev-008-20261107T155405Z-3493200
 base_commit: c464d2aefb86b3b1a25806b71c9232529b15a4ca
 reviewed_head: dd8b86a3d9ad337e03cfe87e445050d1bf32e209
 review_record_commit: e72b2f702b01c30a7ce6af1abae71c62cee8df21
 remediation_commit: 25ccea1c27c8ac04a203318cd33cc1bf0176bee5
 prepared_at: 2026-11-07T15:20:07Z
-merge_status: NOT_MERGED
-push_status: NOT_PUSHED
+approved_candidate: 479db3c9a00b887dc8c82d40dec4793532c8c79d
+authorization_observed_at: 2026-11-07T15:54:05Z
+merge_and_push_verified_at: 2026-11-07T15:56:51Z
+merge_status: MERGED_PUSHED
+push_status: PUSHED_READ_BACK
+completion_handoff: .ai/development/handoffs/DEV-008-authorized-merge.md
 architecture_gate: .ai/development/decisions/TD-001-production-health-data-processing-gate.md
 ---
 
@@ -85,4 +89,9 @@ TD-001 remains `OPEN`. No real provider was selected or connected; no credential
 
 ## Gate
 
-`NOT MERGED — NOT PUSHED`. Explicit human approval is required before any merge or push. No other DEV task has been started.
+Human approval named exact candidate
+`479db3c9a00b887dc8c82d40dec4793532c8c79d`. The candidate was pushed by a
+normal fast-forward from base `c464d2aefb86b3b1a25806b71c9232529b15a4ca`
+to `origin/main`, and remote read-back confirmed the exact commit and tree.
+No other DEV task was started. See
+`.ai/development/handoffs/DEV-008-authorized-merge.md`.

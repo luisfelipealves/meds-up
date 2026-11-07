@@ -13,6 +13,11 @@ source_commits:
   - 899414d367b126914b45382f1328803244d00dbf
 integrated_at: 2026-11-07T15:09:00Z
 ready_for_review: true
+authorized_integration_branch: agent/integration-dev-008-20261107T155405Z-3493200
+approved_candidate: 479db3c9a00b887dc8c82d40dec4793532c8c79d
+merge_status: MERGED_PUSHED
+remote_main: 479db3c9a00b887dc8c82d40dec4793532c8c79d
+completed_at: 2026-11-07T15:57:12Z
 architecture_gate: .ai/development/decisions/TD-001-production-health-data-processing-gate.md
 ---
 
@@ -67,3 +72,13 @@ TD-001 remains `OPEN`. Integration used provider-neutral local code, synthetic i
 ## Review readiness
 
 The branch is ready for independent review against the actual diff and these canonical artifacts. No merge or push is authorized.
+
+## Authorized completion
+
+After explicit human authorization, a new clean integration worktree was
+created at base `c464d2aefb86b3b1a25806b71c9232529b15a4ca` on
+`agent/integration-dev-008-20261107T155405Z-3493200` and fast-forwarded with
+`git merge --ff-only 479db3c9a00b887dc8c82d40dec4793532c8c79d`.
+The complete required validation passed before and after the normal
+`HEAD:main` push. Remote read-back resolved `origin/main` to the exact candidate
+with tree `7b4e58533d714fd18a8d2b78c2a10526c34b06d4`. TD-001 remained `OPEN`.
