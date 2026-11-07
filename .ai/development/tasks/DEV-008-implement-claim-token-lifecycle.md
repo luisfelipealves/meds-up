@@ -2,7 +2,7 @@
 id: DEV-008
 type: development
 title: Implement claim-token lifecycle
-status: IMPLEMENTED
+status: REVIEW
 source: [PD-001, PD-002]
 depends_on: [DEV-002, DEV-003, DEV-004, DEV-007]
 parallel_class: SERIAL
@@ -10,16 +10,16 @@ assigned_agent: developer-dev-008
 branch: agent/integration-dev-008
 worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-008
 started_at: 2026-11-07T15:00:57Z
-updated_at: 2026-11-07T15:16:09Z
+updated_at: 2026-11-07T15:18:53Z
 completed_at: 2026-11-07T15:06:10Z
 implementation_commit: db84d511605ada98976a528743cccef89477d2c8
 handoff: .ai/development/handoffs/DEV-008-developer-handoff.md
 integration_branch: agent/integration-dev-008
 integration_commits: [801131e, 770216f]
 integration_handoff: .ai/development/integration/DEV-008-integration-handoff.md
-review: .ai/reviews/DEV-008-independent-review.md
-review_status: CHANGES_REQUIRED
-review_blocking_findings: 1
+review: .ai/reviews/DEV-008-independent-rereview.md
+review_status: PASS
+review_blocking_findings: 0
 review_non_blocking_findings: 1
 remediation_metadata: .ai/development/handoffs/DEV-008-review-remediation.md
 remediation_status: B1_REMEDIATED
