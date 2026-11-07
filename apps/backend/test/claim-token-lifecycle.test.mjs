@@ -14,7 +14,7 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-async function harness({ now = Date.UTC(2026, 10, 7), maxFailedAttempts = 5, repositoryOptions } = {}) {
+async function harness({ now = Date.UTC(2026, 10, 7), maxFailedAttempts = 5, repositoryOptions, clock } = {}) {
   let currentTime = now;
   const identities = {
     ...TEST_IDENTITIES,
@@ -48,7 +48,7 @@ async function harness({ now = Date.UTC(2026, 10, 7), maxFailedAttempts = 5, rep
       return true;
     },
     repository,
-    clock: () => currentTime,
+    clock: clock ?? (() => currentTime),
     createId: (prefix) => `${prefix}_${String(++identifier).padStart(20, "0")}`,
     rateLimit: { maxFailedAttempts, windowMs: 15 * 60 * 1000 },
   });
@@ -164,6 +164,27 @@ test("revocation and replacement invalidate old tokens while replacement returns
   const tokens = h.repository.inspectForTests().tokens;
   assert.equal(tokens.find(({ claimTokenId }) => claimTokenId === original.claimTokenId).status, "REPLACED");
   assert.equal(tokens.find(({ claimTokenId }) => claimTokenId === replacement.claimTokenId).status, "CONSUMED");
+});
+
+test("anchors replacement expiry and replacedAt to one operation timestamp", async () => {
+  const issuedAt = Date.UTC(2026, 10, 7);
+  const replacementAt = issuedAt + 1234;
+  const clockValues = [issuedAt, replacementAt];
+  const h = await harness({ clock: () => clockValues.shift() });
+  const original = await h.service.issue(h.doctor, { prescriptionId: "prescription-0001" });
+  const replacement = await h.service.replace(h.doctor, { claimTokenId: original.claimTokenId });
+  const replacementRecord = h.repository.inspectForTests().tokens.find(
+    ({ claimTokenId }) => claimTokenId === replacement.claimTokenId,
+  );
+  const replacedRecord = h.repository.inspectForTests().tokens.find(
+    ({ claimTokenId }) => claimTokenId === original.claimTokenId,
+  );
+
+  assert.equal(Date.parse(replacement.expiresAt), replacementAt + CLAIM_TOKEN_TTL_MS);
+  assert.equal(Date.parse(replacementRecord.issuedAt), replacementAt);
+  assert.equal(Date.parse(replacedRecord.replacedAt), replacementAt);
+  assert.equal(Date.parse(replacementRecord.expiresAt) - Date.parse(replacedRecord.replacedAt), CLAIM_TOKEN_TTL_MS);
+  assert.equal(clockValues.length, 0);
 });
 
 test("audits success and every token failure without persisting raw tokens", async () => {

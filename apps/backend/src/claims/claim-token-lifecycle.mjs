@@ -179,12 +179,13 @@ export function createClaimTokenService({
     async replace(subject, command) {
       const actor = doctor(subject);
       const current = tokens.getByOwner(command?.claimTokenId, actor.subjectId);
-      const prepared = issuance(actor.subjectId, current.prescriptionId, requireTime(clock));
+      const now = requireTime(clock);
+      const prepared = issuance(actor.subjectId, current.prescriptionId, now);
       const stored = tokens.replace({
         claimTokenId: current.claimTokenId,
         ownerDoctorId: actor.subjectId,
         replacement: prepared.record,
-        now: requireTime(clock),
+        now,
       });
       return delivery(stored, prepared.secret.rawToken);
     },
