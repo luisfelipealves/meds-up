@@ -12,6 +12,7 @@ import {
   validateDoctorConfirmationCommand,
   validateEphemeralDocumentInput,
   validateErrorEnvelope,
+  validatePrescriptionClinicalChangeCommand,
   validatePrescriptionStatusCommand,
   validatePrescriptionStatusEvent,
   validatePrescriptionVersion,
@@ -49,6 +50,7 @@ test("published v1 schemas are closed, versioned, and provider-neutral", async (
       "DoctorConfirmationCommand",
       "EphemeralDocumentInput",
       "ErrorEnvelope",
+      "PrescriptionClinicalChangeCommand",
       "PrescriptionStatusCommand",
       "PrescriptionStatusEvent",
       "PrescriptionVersion",
@@ -85,6 +87,7 @@ test("schema fixtures match executable validators for every published contract",
     EphemeralDocumentInput: [{ apiVersion: "v1", schemaVersion: 1, reviewSessionId, mediaType: "application/pdf", byteLength: 2048 }, validateEphemeralDocumentInput],
     UntrustedPrescriptionProposal: [{ apiVersion: "v1", schemaVersion: 1, lifecycle: "SESSION_ONLY_UNTRUSTED", reviewSessionId, generatedAt: "2026-11-03T15:45:00Z", expiresAt: "2026-11-03T16:00:00Z", provenance: { source: "OCR_AI_EXTRACTION", scope: "SESSION_ONLY" }, confidence: { overall: 0.85 }, clinicalContent }, validateUntrustedPrescriptionProposal],
     DoctorConfirmationCommand: [{ apiVersion: "v1", schemaVersion: 1, idempotencyKey: "idem_01JBR5R0TDJXM8V4NX6KQ2P9AZ", reviewSessionId, ownerDoctorId: doctorId, confirmation: { decision: "CONFIRMED", confirmedByDoctorId: doctorId, confirmedAt: "2026-11-03T15:50:00Z" }, correctedClinicalContent: clinicalContent }, validateDoctorConfirmationCommand],
+    PrescriptionClinicalChangeCommand: [{ apiVersion: "v1", schemaVersion: 1, idempotencyKey: "idem_change_01JBR5R0TDJXM8V4", prescriptionId, ownerDoctorId: doctorId, expectedResourceVersion: 1, confirmation: { decision: "CONFIRMED", confirmedByDoctorId: doctorId, confirmedAt: "2026-11-03T15:50:00Z" }, correctedClinicalContent: clinicalContent }, validatePrescriptionClinicalChangeCommand],
     ConfirmedPrescription: [{ apiVersion: "v1", schemaVersion: 1, lifecycle: "DOCTOR_CONFIRMED", prescriptionId, ownerDoctorId: doctorId, patientAssociationId: null, status: "ACTIVE", currentPrescriptionVersion: 1, resourceVersion: 1, createdAt: "2026-11-03T15:50:00Z", updatedAt: "2026-11-03T15:50:00Z" }, validateConfirmedPrescription],
     PrescriptionVersion: [{ apiVersion: "v1", schemaVersion: 1, lifecycle: "DOCTOR_CONFIRMED_VERSION", prescriptionId, prescriptionVersion: 1, resourceVersion: 1, confirmedByDoctorId: doctorId, confirmedAt: "2026-11-03T15:50:00Z", createdAt: "2026-11-03T15:50:00Z", clinicalContent }, validatePrescriptionVersion],
     PrescriptionStatusCommand: [{ apiVersion: "v1", schemaVersion: 1, idempotencyKey: "idem_01JBR6D8P4N7X2K9M5Q0T3V1AZ", prescriptionId, ownerDoctorId: doctorId, expectedResourceVersion: 1, targetStatus: "SUSPENDED", requestedAt: "2026-11-03T16:00:00Z" }, validatePrescriptionStatusCommand],
@@ -104,9 +107,9 @@ test("schema fixtures match executable validators for every published contract",
     assert.throws(() => validateRuntime(unknown), `${definition} runtime accepted an unknown field`);
   }
 
-  for (const definition of ["UntrustedPrescriptionProposal", "DoctorConfirmationCommand", "PrescriptionVersion"]) {
+  for (const definition of ["UntrustedPrescriptionProposal", "DoctorConfirmationCommand", "PrescriptionClinicalChangeCommand", "PrescriptionVersion"]) {
     const [fixture, validateRuntime] = fixtures[definition];
-    const clinicalKey = definition === "DoctorConfirmationCommand" ? "correctedClinicalContent" : "clinicalContent";
+    const clinicalKey = definition.includes("Command") ? "correctedClinicalContent" : "clinicalContent";
     const whitespace = {
       ...fixture,
       [clinicalKey]: { medications: [{ medicationName: "   ", dose: "1 tablet" }] },
@@ -120,6 +123,7 @@ test("schema fixtures match executable validators for every published contract",
     ["UntrustedPrescriptionProposal", { ...fixtures.UntrustedPrescriptionProposal[0], clinicalContent: { ...clinicalContent, rawOcr: "sensitive" } }],
     ["PrescriptionVersion", { ...fixtures.PrescriptionVersion[0], clinicalContent: { medications: [{ ...clinicalContent.medications[0], proposal: "sensitive" }] } }],
     ["DoctorConfirmationCommand", { ...fixtures.DoctorConfirmationCommand[0], confirmation: { ...fixtures.DoctorConfirmationCommand[0].confirmation, identity: "sensitive" } }],
+    ["PrescriptionClinicalChangeCommand", { ...fixtures.PrescriptionClinicalChangeCommand[0], confirmation: { ...fixtures.PrescriptionClinicalChangeCommand[0].confirmation, identity: "sensitive" } }],
     ["ErrorEnvelope", { ...fixtures.ErrorEnvelope[0], error: { ...fixtures.ErrorEnvelope[0].error, diagnostic: "sensitive" } }],
   ];
   for (const [definition, fixture] of nestedUnknowns) {
@@ -143,6 +147,7 @@ test("every safe-integer schema field matches runtime at the maximum boundary", 
     ["PrescriptionVersion", "prescriptionVersion", { apiVersion: "v1", schemaVersion: 1, lifecycle: "DOCTOR_CONFIRMED_VERSION", prescriptionId, prescriptionVersion: 1, resourceVersion: 1, confirmedByDoctorId: doctorId, confirmedAt: "2026-11-03T15:50:00Z", createdAt: "2026-11-03T15:50:00Z", clinicalContent }, validatePrescriptionVersion],
     ["PrescriptionVersion", "resourceVersion", { apiVersion: "v1", schemaVersion: 1, lifecycle: "DOCTOR_CONFIRMED_VERSION", prescriptionId, prescriptionVersion: 1, resourceVersion: 1, confirmedByDoctorId: doctorId, confirmedAt: "2026-11-03T15:50:00Z", createdAt: "2026-11-03T15:50:00Z", clinicalContent }, validatePrescriptionVersion],
     ["PrescriptionStatusCommand", "expectedResourceVersion", { apiVersion: "v1", schemaVersion: 1, idempotencyKey: "idem_01JBR6D8P4N7X2K9M5Q0T3V1AZ", prescriptionId, ownerDoctorId: doctorId, expectedResourceVersion: 1, targetStatus: "SUSPENDED", requestedAt: "2026-11-03T16:00:00Z" }, validatePrescriptionStatusCommand],
+    ["PrescriptionClinicalChangeCommand", "expectedResourceVersion", { apiVersion: "v1", schemaVersion: 1, idempotencyKey: "idem_change_01JBR5R0TDJXM8V4", prescriptionId, ownerDoctorId: doctorId, expectedResourceVersion: 1, confirmation: { decision: "CONFIRMED", confirmedByDoctorId: doctorId, confirmedAt: "2026-11-03T15:50:00Z" }, correctedClinicalContent: clinicalContent }, validatePrescriptionClinicalChangeCommand],
     ["PrescriptionStatusEvent", "prescriptionVersion", { apiVersion: "v1", schemaVersion: 1, eventId: "evt_01JBR6G2X8M4K7N1Q5T9V3P0AZ", prescriptionId, prescriptionVersion: 1, previousStatus: "ACTIVE", status: "SUSPENDED", resourceVersion: 2, serverVersion: 1, occurredAt: "2026-11-03T16:00:01Z" }, validatePrescriptionStatusEvent],
     ["PrescriptionStatusEvent", "resourceVersion", { apiVersion: "v1", schemaVersion: 1, eventId: "evt_01JBR6G2X8M4K7N1Q5T9V3P0AZ", prescriptionId, prescriptionVersion: 1, previousStatus: "ACTIVE", status: "SUSPENDED", resourceVersion: 2, serverVersion: 1, occurredAt: "2026-11-03T16:00:01Z" }, validatePrescriptionStatusEvent],
     ["PrescriptionStatusEvent", "serverVersion", { apiVersion: "v1", schemaVersion: 1, eventId: "evt_01JBR6G2X8M4K7N1Q5T9V3P0AZ", prescriptionId, prescriptionVersion: 1, previousStatus: "ACTIVE", status: "SUSPENDED", resourceVersion: 2, serverVersion: 1, occurredAt: "2026-11-03T16:00:01Z" }, validatePrescriptionStatusEvent],

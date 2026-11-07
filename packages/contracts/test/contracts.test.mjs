@@ -6,6 +6,7 @@ import {
   validateEphemeralDocumentInput,
   validateUntrustedPrescriptionProposal,
   validateDoctorConfirmationCommand,
+  validatePrescriptionClinicalChangeCommand,
   validateConfirmedPrescription,
   validatePrescriptionVersion,
   validatePrescriptionStatusCommand,
@@ -87,6 +88,28 @@ test("only an explicit doctor confirmation command can represent confirmation", 
       ...validConfirmation,
       confirmation: { ...validConfirmation.confirmation, decision: "PROPOSED" }
     }),
+    ContractValidationError
+  );
+});
+
+test("clinical change command requires explicit doctor confirmation and optimistic concurrency", () => {
+  const command = {
+    apiVersion: "v1",
+    schemaVersion: 1,
+    idempotencyKey: "idem_change_00000000000001",
+    prescriptionId: "rx_01JBR67EDW4A9T2N8M5KQ3X0CZ",
+    ownerDoctorId: validConfirmation.ownerDoctorId,
+    expectedResourceVersion: 1,
+    confirmation: validConfirmation.confirmation,
+    correctedClinicalContent: validProposal.clinicalContent
+  };
+  assert.deepEqual(validatePrescriptionClinicalChangeCommand(command), command);
+  assert.throws(
+    () => validatePrescriptionClinicalChangeCommand({ ...command, expectedResourceVersion: 0 }),
+    ContractValidationError
+  );
+  assert.throws(
+    () => validatePrescriptionClinicalChangeCommand({ ...command, confirmation: { ...command.confirmation, decision: "PROPOSED" } }),
     ContractValidationError
   );
 });

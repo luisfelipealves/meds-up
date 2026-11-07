@@ -154,6 +154,25 @@ export function validateDoctorConfirmationCommand(value) {
   return command;
 }
 
+export function validatePrescriptionClinicalChangeCommand(value) {
+  const command = validateObject("PrescriptionClinicalChangeCommand", value, {
+    apiVersion: (candidate) => candidate === API_VERSION,
+    schemaVersion: (candidate) => candidate === SCHEMA_VERSION,
+    idempotencyKey: isIdempotencyKey,
+    prescriptionId: isOpaqueId,
+    ownerDoctorId: isOpaqueId,
+    expectedResourceVersion: isPositiveInteger,
+    confirmation: isExplicitConfirmation,
+    correctedClinicalContent: isClinicalContent
+  });
+  if (command.ownerDoctorId !== command.confirmation.confirmedByDoctorId) {
+    throw new ContractValidationError("PrescriptionClinicalChangeCommand", [
+      { path: "confirmation.confirmedByDoctorId", code: "OWNER_MISMATCH", message: "must match ownerDoctorId" }
+    ]);
+  }
+  return command;
+}
+
 export function validateConfirmedPrescription(value) {
   const prescription = validateObject("ConfirmedPrescription", value, {
     apiVersion: (candidate) => candidate === API_VERSION,
@@ -279,7 +298,7 @@ export function validateAuditReference(value) {
     apiVersion: (candidate) => candidate === API_VERSION,
     schemaVersion: (candidate) => candidate === SCHEMA_VERSION,
     auditReferenceId: isOpaqueId,
-    eventType: (candidate) => ["EPHEMERAL_EXTRACTION", "DOCTOR_CONFIRMATION", "PRESCRIPTION_STATUS_CHANGE"].includes(candidate),
+    eventType: (candidate) => ["EPHEMERAL_EXTRACTION", "DOCTOR_CONFIRMATION", "PRESCRIPTION_CLINICAL_CHANGE", "PRESCRIPTION_STATUS_CHANGE"].includes(candidate),
     outcome: (candidate) => ["STARTED", "COMPLETED", "FAILED", "DENIED"].includes(candidate),
     occurredAt: isTimestamp,
     securityCorrelationId: isOpaqueId

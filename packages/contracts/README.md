@@ -6,7 +6,7 @@ Provider-neutral v1 prescription and API contracts. The package contains executa
 
 - `EphemeralDocumentInput` is request metadata only. The document body is streamed separately and has no locator, repository identifier, filename, durable message, recovery token, or persistence contract.
 - `UntrustedPrescriptionProposal` is marked `SESSION_ONLY_UNTRUSTED`, belongs to the active review session, and expires with that session. It has no confirmed prescription ID or recovery path.
-- `DoctorConfirmationCommand` requires `decision: CONFIRMED`, the confirming doctor to match the owner, corrected structured content, and an idempotency key.
+- `DoctorConfirmationCommand` requires `decision: CONFIRMED`, the confirming doctor to match the owner, corrected structured content, and an idempotency key. `PrescriptionClinicalChangeCommand` applies the same explicit-confirmation gate to later clinical changes and additionally requires an expected resource version.
 - `ConfirmedPrescription` and `PrescriptionVersion` are the only confirmed domain records. They use opaque IDs, UTC timestamps with offsets, positive resource/prescription versions, explicit ownership, and immutable doctor-confirmed clinical versions.
 - `AuditReference` permits only an allow-listed event type, coarse outcome, timestamp, and opaque security correlation. It contains no clinical or provider content.
 
