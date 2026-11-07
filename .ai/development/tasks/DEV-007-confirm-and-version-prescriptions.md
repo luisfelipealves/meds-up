@@ -30,6 +30,9 @@ remediation_metadata: .ai/development/handoffs/DEV-007-review-remediation.md
 remediation_commit: a7cc726ef3102f7203059ecdfbefe6f34f301a4a
 remediated_at: 2026-11-07T13:52:24Z
 overall_status: HUMAN_TESTING
+human_testing_handoff: .ai/development/handoffs/DEV-007-human-testing.md
+human_testing_candidate: 0f39e517670babe0f63e68a65578936124b5032e
+human_testing_prepared_at: 2026-11-07T13:58:26Z
 ---
 
 # Objective
