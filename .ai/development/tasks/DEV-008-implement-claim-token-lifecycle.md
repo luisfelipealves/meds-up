@@ -2,7 +2,7 @@
 id: DEV-008
 type: development
 title: Implement claim-token lifecycle
-status: INTEGRATED
+status: REVIEW
 source: [PD-001, PD-002]
 depends_on: [DEV-002, DEV-003, DEV-004, DEV-007]
 parallel_class: SERIAL
