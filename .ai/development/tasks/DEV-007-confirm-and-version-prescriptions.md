@@ -2,7 +2,7 @@
 id: DEV-007
 type: development
 title: Confirm and version prescriptions
-status: IMPLEMENTED
+status: INTEGRATED
 source: [PD-001, PD-008]
 depends_on: [DEV-002, DEV-004, DEV-006]
 parallel_class: SERIAL
@@ -10,10 +10,17 @@ assigned_agent: developer-dev-007
 branch: agent/dev-007-confirm-version-prescriptions
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-007-confirm-version-prescriptions
 started_at: 2026-11-07T13:24:13Z
-updated_at: 2026-11-07T13:33:27Z
+updated_at: 2026-11-07T13:37:43Z
 completed_at: 2026-11-07T13:33:27Z
 implementation_commit: 2e28ccc1f5f06fe965c340d6ebc9a590effec4cd
 handoff: .ai/development/handoffs/DEV-007-developer-handoff.md
+integration_branch: agent/integration-dev-007
+integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-007
+integration_base: d6362ae2304e1c20951d8569b2bf4a9f87c105b6
+integrated_developer_head: 2f9cc2b90c9f56abeef7b1e2b6136c4472dc185c
+integrated_at: 2026-11-07T13:37:43Z
+integration_handoff: .ai/development/integration/DEV-007-integration-handoff.md
+integration_evidence_commit: this file's commit
 ---
 
 # Objective
@@ -59,3 +66,22 @@ DEV-002, DEV-004, and DEV-006.
 
 See `.ai/development/handoffs/DEV-007-developer-handoff.md` for exact files,
 validation, acceptance evidence, known issues, and integration constraints.
+
+# Integration Result
+
+- Developer HEAD `2f9cc2b90c9f56abeef7b1e2b6136c4472dc185c`
+  was verified as a clean descendant of base
+  `d6362ae2304e1c20951d8569b2bf4a9f87c105b6` and fast-forwarded without
+  conflicts onto `agent/integration-dev-007`.
+- Fresh integration validation passed: lockfile install, complete npm test/lint/build,
+  Make test/lint/build, the full Node/Android/Wear validator, and base-to-HEAD
+  `git diff --check`. Test totals were backend 56/56, PWA 2/2, and contracts
+  15/15.
+- All four acceptance criteria passed code/test inspection. The ten-path diff is
+  limited to DEV-007 implementation, contracts/tests, package wiring, and
+  workflow evidence; no TD-001-forbidden provider, credential, network,
+  deployment, production-persistence, region, key, real-document, or
+  real-health-data path was introduced.
+
+See `.ai/development/integration/DEV-007-integration-handoff.md` for complete
+integration and review-readiness evidence.
