@@ -124,3 +124,21 @@ merged to main or pushed. Because this changes medication/prescription behavior
 and health-data confirmation rules, later workflow remains subject to the
 applicable independent-review and human gate; this handoff grants no production
 or TD-001 approval.
+
+## Remediation validation append-only note
+
+The independent review's B1 and B2 were remediated in the current integration
+worktree: confirmation now requires a marked synchronous atomic confirmation
+boundary over a side-effect-free prepared repository transaction, with rollback
+on failed persistence; generated identifiers and the complete
+`PrescriptionAuditRecord` are validated before commit. Focused tests cover
+failure retryability, malformed clocks and IDs, duplicate/colliding IDs,
+linkage, schema/runtime parity, and concurrent different-key confirmation.
+
+The parent coordinator reran the complete writable validation suite. Focused
+and complete Node tests passed (backend 60/60, PWA 2/2, contracts 16/16), as did
+`npm run lint`, `npm run build`, `make test`, `make lint`, `make build`, the
+full `./scripts/validate.sh` Node/Android/Wear matrix, and `git diff --check`.
+The focused remediation implementation is commit
+`a7cc7261c31f1bfae96c08e6783664c079b7bbfa`; the following workflow-only commit
+records this corrected evidence for exact-head independent rereview.
