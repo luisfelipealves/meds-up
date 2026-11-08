@@ -49,7 +49,7 @@ display-name inputs.
 ## Validation evidence
 
 - `node --test apps/backend/test/masked-identity-confirmation.test.mjs apps/backend/test/claim-token-lifecycle.test.mjs packages/contracts/test/contracts.test.mjs packages/contracts/test/schema.test.mjs` — PASSED, 37/37.
-- `npm run validate:node` — PASSED: backend 79/79, PWA 2/2, contracts 17/17, build, lint, and static check.
+- `npm run validate:node` — PASSED: backend 80/80, PWA 2/2, contracts 17/17, build, lint, and static check.
 - `git diff --check` — PASSED.
 - `npm ci --ignore-scripts` — completed with 0 reported vulnerabilities to restore missing workspace dependencies before validation.
 
