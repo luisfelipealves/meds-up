@@ -2,7 +2,7 @@
 id: DEV-010
 type: development
 title: Associate claimed prescription to patient
-status: IMPLEMENTED
+status: INTEGRATED
 source: [PD-001, PD-002]
 depends_on: [DEV-003, DEV-008, DEV-009]
 parallel_class: SERIAL
@@ -17,6 +17,13 @@ handoff: .ai/development/handoffs/DEV-010-developer-handoff.md
 validation_status: PASSED
 focused_tests: 29/29
 validate_node: PASSED
+integration_branch: agent/integration-dev-010
+integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-010
+integration_base_commit: b48b09eb6e2c5ecb3663d4c1bdc731f0b9d36466
+integrated_developer_head: 5d1244f6b4042a2850aefa11f2d19df1c996010a
+integrated_at: 2026-11-08T11:58:00Z
+integration_handoff: .ai/development/integration/DEV-010-integration-handoff.md
+validate_script: PASSED
 ---
 
 # Objective
