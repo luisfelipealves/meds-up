@@ -199,6 +199,37 @@
         "resourceVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
       }
     },
+    "ClaimIdentityPreview": {
+      "type": "object", "additionalProperties": false,
+      "required": ["apiVersion", "schemaVersion", "initials", "issuerDisplayName"],
+      "properties": {
+        "apiVersion": { "const": "v1" }, "schemaVersion": { "const": 1 },
+        "initials": { "type": "string", "pattern": "^\\p{L}{1,2}$" },
+        "issuerDisplayName": { "type": "string", "minLength": 1, "maxLength": 120, "pattern": "^[^\\u0000-\\u001F\\u007F]+$" }
+      }
+    },
+    "ClaimIdentityConfirmationCommand": {
+      "type": "object", "additionalProperties": false,
+      "required": ["apiVersion", "schemaVersion", "rawToken", "dateOfBirth"],
+      "properties": {
+        "apiVersion": { "const": "v1" }, "schemaVersion": { "const": 1 },
+        "rawToken": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+        "dateOfBirth": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+      }
+    },
+    "ClaimIdentityAuditRecord": {
+      "type": "object", "additionalProperties": false,
+      "required": ["apiVersion", "schemaVersion", "claimAttemptId", "actorPatientSubjectId", "claimTokenId", "operation", "outcome", "occurredAt"],
+      "properties": {
+        "apiVersion": { "const": "v1" }, "schemaVersion": { "const": 1 },
+        "claimAttemptId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
+        "actorPatientSubjectId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" },
+        "claimTokenId": { "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }] },
+        "operation": { "enum": ["PREVIEW", "CONFIRM"] },
+        "outcome": { "enum": ["PREVIEWED", "CONFIRMED", "INVALID_TOKEN", "DOB_MISMATCH", "RATE_LIMITED", "INTERNAL_ERROR"] },
+        "occurredAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "ErrorEnvelope": {
       "type": "object",
       "additionalProperties": false,

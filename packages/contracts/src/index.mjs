@@ -345,6 +345,44 @@ export function validateErrorEnvelope(value) {
   });
 }
 
+const isCivilDate = (value) => {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+};
+
+export function validateClaimIdentityPreview(value) {
+  return validateObject("ClaimIdentityPreview", value, {
+    apiVersion: (candidate) => candidate === API_VERSION,
+    schemaVersion: (candidate) => candidate === SCHEMA_VERSION,
+    initials: (candidate) => typeof candidate === "string" && /^\p{L}{1,2}$/u.test(candidate),
+    issuerDisplayName: (candidate) => typeof candidate === "string" && candidate.length >= 1 && candidate.length <= 120 && !/[\u0000-\u001f\u007f]/u.test(candidate)
+  });
+}
+
+export function validateClaimIdentityConfirmationCommand(value) {
+  return validateObject("ClaimIdentityConfirmationCommand", value, {
+    apiVersion: (candidate) => candidate === API_VERSION,
+    schemaVersion: (candidate) => candidate === SCHEMA_VERSION,
+    rawToken: (candidate) => typeof candidate === "string" && /^[A-Za-z0-9_-]{43}$/.test(candidate),
+    dateOfBirth: isCivilDate
+  });
+}
+
+export function validateClaimIdentityAuditRecord(value) {
+  return validateObject("ClaimIdentityAuditRecord", value, {
+    apiVersion: (candidate) => candidate === API_VERSION,
+    schemaVersion: (candidate) => candidate === SCHEMA_VERSION,
+    claimAttemptId: isOpaqueId,
+    actorPatientSubjectId: isOpaqueId,
+    claimTokenId: (candidate) => candidate === null || isOpaqueId(candidate),
+    operation: (candidate) => ["PREVIEW", "CONFIRM"].includes(candidate),
+    outcome: (candidate) => ["PREVIEWED", "CONFIRMED", "INVALID_TOKEN", "DOB_MISMATCH", "RATE_LIMITED", "INTERNAL_ERROR"].includes(candidate),
+    occurredAt: isTimestamp
+  });
+}
+
 export function createErrorEnvelope(code, requestId) {
   const definition = ERROR_DEFINITIONS[code];
   if (definition === undefined) {

@@ -18,6 +18,9 @@ import {
   validatePrescriptionStatusEvent,
   validatePrescriptionVersion,
   validateUntrustedPrescriptionProposal,
+  validateClaimIdentityPreview,
+  validateClaimIdentityConfirmationCommand,
+  validateClaimIdentityAuditRecord,
 } from "../src/index.mjs";
 
 const schemaUrl = new URL("../schemas/v1/contracts.schema.json", import.meta.url);
@@ -47,6 +50,9 @@ test("published v1 schemas are closed, versioned, and provider-neutral", async (
     Object.keys(schema.$defs).sort(),
     [
       "AuditReference",
+      "ClaimIdentityAuditRecord",
+      "ClaimIdentityConfirmationCommand",
+      "ClaimIdentityPreview",
       "PrescriptionAuditRecord",
       "ConfirmedPrescription",
       "DoctorConfirmationCommand",
@@ -97,6 +103,9 @@ test("schema fixtures match executable validators for every published contract",
     AuditReference: [{ apiVersion: "v1", schemaVersion: 1, auditReferenceId: "aud_01JBR6PK2M8V4X7N1Q5T9C3AZ", eventType: "EPHEMERAL_EXTRACTION", outcome: "COMPLETED", occurredAt: "2026-11-03T16:01:00Z", securityCorrelationId: "cor_01JBR6Q8N4M2X7K5T9V1P3AZ" }, validateAuditReference],
     PrescriptionAuditRecord: [{ apiVersion: "v1", schemaVersion: 1, auditReferenceId: "aud_01JBR6PK2M8V4X7N1Q5T9C3AZ", eventType: "DOCTOR_CONFIRMATION", outcome: "COMPLETED", actorDoctorId: doctorId, occurredAt: "2026-11-03T16:01:00Z", securityCorrelationId: "cor_01JBR6Q8N4M2X7K5T9V1P3AZ", prescriptionId, prescriptionVersion: 1, previousPrescriptionVersion: null, resourceVersion: 1 }, validatePrescriptionAuditRecord],
     ErrorEnvelope: [createErrorEnvelope("INTERNAL_ERROR", "req_01JBR6V2N8M4X7K5T9Q1P3AZ"), validateErrorEnvelope],
+    ClaimIdentityPreview: [{ apiVersion: "v1", schemaVersion: 1, initials: "AS", issuerDisplayName: "Clinica Sintetica" }, validateClaimIdentityPreview],
+    ClaimIdentityConfirmationCommand: [{ apiVersion: "v1", schemaVersion: 1, rawToken: "A".repeat(43), dateOfBirth: "1985-04-12" }, validateClaimIdentityConfirmationCommand],
+    ClaimIdentityAuditRecord: [{ apiVersion: "v1", schemaVersion: 1, claimAttemptId: "attempt_01JBR6PK2M8V4X7N1Q5T9C3AZ", actorPatientSubjectId: "patient_01JBR6Q8N4M2X7K5T9V1P3AZ", claimTokenId: null, operation: "CONFIRM", outcome: "DOB_MISMATCH", occurredAt: "2026-11-08T16:01:00Z" }, validateClaimIdentityAuditRecord],
   };
 
   for (const [definition, [fixture, validateRuntime]] of Object.entries(fixtures)) {

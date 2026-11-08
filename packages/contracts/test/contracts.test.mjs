@@ -17,8 +17,23 @@ import {
   validateAuditReference,
   validatePrescriptionAuditRecord,
   createErrorEnvelope,
-  validateErrorEnvelope
+  validateErrorEnvelope,
+  validateClaimIdentityPreview,
+  validateClaimIdentityConfirmationCommand,
+  validateClaimIdentityAuditRecord
 } from "../src/index.mjs";
+
+test("claim identity contracts are closed, canonical, and contain no clinical fields", () => {
+  const preview = { apiVersion: "v1", schemaVersion: 1, initials: "AS", issuerDisplayName: "Clinica Sintetica" };
+  assert.deepEqual(validateClaimIdentityPreview(preview), preview);
+  assert.throws(() => validateClaimIdentityPreview({ ...preview, dateOfBirth: "1985-04-12" }), ContractValidationError);
+  const command = { apiVersion: "v1", schemaVersion: 1, rawToken: "A".repeat(43), dateOfBirth: "1985-04-12" };
+  assert.deepEqual(validateClaimIdentityConfirmationCommand(command), command);
+  assert.throws(() => validateClaimIdentityConfirmationCommand({ ...command, dateOfBirth: "1985-02-29" }), ContractValidationError);
+  const audit = { apiVersion: "v1", schemaVersion: 1, claimAttemptId: "attempt_01JBR6PK2M8V4X7N1Q5T9C3AZ", actorPatientSubjectId: "patient_01JBR6Q8N4M2X7K5T9V1P3AZ", claimTokenId: null, operation: "CONFIRM", outcome: "DOB_MISMATCH", occurredAt: "2026-11-08T16:01:00Z" };
+  assert.deepEqual(validateClaimIdentityAuditRecord(audit), audit);
+  assert.throws(() => validateClaimIdentityAuditRecord({ ...audit, dateOfBirth: "1985-04-12" }), ContractValidationError);
+});
 
 const validInput = {
   apiVersion: "v1",

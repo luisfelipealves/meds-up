@@ -76,7 +76,7 @@ function isRawToken(rawToken) {
 }
 
 function requireRepository(repository) {
-  for (const method of ["issue", "getByOwner", "listByOwner", "revoke", "replace", "consume"]) {
+  for (const method of ["issue", "getByOwner", "listByOwner", "revoke", "replace", "consume", "resolveForConfirmation"]) {
     if (typeof repository?.[method] !== "function") {
       throw new TypeError(`Claim-token repository must implement ${method}`);
     }
@@ -206,6 +206,18 @@ export function createClaimTokenService({
       });
       if (!result.success) throw claimFailure();
       return Object.freeze({ claimTokenId: result.claimTokenId, prescriptionId: result.prescriptionId });
+    },
+
+    // Internal provider-neutral boundary for DEV-009. It deliberately does not
+    // mutate lifecycle state or return a secret; identity confirmation owns the
+    // decision whether a later, explicit consume is allowed.
+    resolveForConfirmation(subject, command) {
+      const actor = patient(subject);
+      const rawToken = command?.rawToken;
+      const validFormat = isRawToken(rawToken);
+      if (!validFormat) return null;
+      const tokenDigest = digestToken(rawToken);
+      return tokens.resolveForConfirmation({ tokenDigest, now: requireTime(clock), patientSubjectId: actor.subjectId });
     },
   });
 }
@@ -360,6 +372,13 @@ export function createInMemoryClaimTokenRepository({ beforeCommit = () => {} } =
           prescriptionId: consumed.prescriptionId,
         });
       });
+    },
+
+    resolveForConfirmation({ tokenDigest, now }) {
+      const claimTokenId = tokenIdByDigest.get(tokenDigest);
+      const token = claimTokenId === undefined ? undefined : tokenById.get(claimTokenId);
+      if (token === undefined || token.status !== "ACTIVE" || now >= Date.parse(token.expiresAt)) return null;
+      return Object.freeze({ claimTokenId: token.claimTokenId, prescriptionId: token.prescriptionId });
     },
 
     inspectForTests() {
