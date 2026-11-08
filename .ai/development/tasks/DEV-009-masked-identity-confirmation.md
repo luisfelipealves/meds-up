@@ -17,6 +17,10 @@ review_blocking_findings: 2
 review_non_blocking_findings: 1
 reviewed_commit: 40ec9df81cf6f90bc373ea4465908ca743dbe2fb
 handoff: .ai/development/handoffs/DEV-009-developer-handoff.md
+remediation_metadata: .ai/development/handoffs/DEV-009-review-remediation.md
+remediation_status: B1_B2_N1_REMEDIATED_PENDING_REREVIEW
+remediated_at: 2026-11-08T00:00:00Z
+remediation_commit: beb43af76055d820d1e2aca8a0d7ed451d2c0428
 integration_branch: agent/integration-dev-009
 integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-009
 integration_base_commit: 479db3c9a00b887dc8c82d40dec4793532c8c79d
