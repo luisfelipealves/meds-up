@@ -2,7 +2,7 @@
 id: DEV-009
 type: development
 title: Implement masked pre-claim identity confirmation
-status: HUMAN_TESTING
+status: DONE
 source: [PD-001, PD-002]
 depends_on: [DEV-008]
 parallel_class: SERIAL
@@ -52,8 +52,12 @@ human_approved_at: 2026-11-08T11:32:48Z
 merge_authorized: true
 push_authorized: true
 merge_push_authorized_at: 2026-11-08T11:37:07Z
-merge_status: NOT_MERGED
-push_status: NOT_PUSHED
+merge_status: MERGED
+push_status: PUSHED
+merged_main_commit: 73c63cfdf5237061b30134ab3127992d40c88656
+merged_at: 2026-11-08T11:37:54Z
+pushed_at: 2026-11-08T11:37:54Z
+completion_handoff: .ai/development/handoffs/DEV-009-authorized-merge.md
 rereview: .ai/reviews/DEV-009-independent-rereview.md
 rereview_status: PASS
 rereviewed_commit: 2e6228b05039984db23b9677db4752e36f1d3423
