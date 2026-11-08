@@ -2,13 +2,17 @@
 id: DEV-009
 type: development
 title: Implement masked pre-claim identity confirmation
-status: PLANNED
+status: IMPLEMENTED
 source: [PD-001, PD-002]
 depends_on: [DEV-008]
 parallel_class: SERIAL
-assigned_agent: null
-branch: null
-worktree: null
+assigned_agent: codex-dev-team
+branch: agent/dev-009-masked-identity
+worktree: /home/felipe/projetos/meds-up-worktrees/dev-009-masked-identity
+implemented_at: 2026-11-08T10:34:26Z
+implementation_commit: e0486a0
+review_status: SELF_VALIDATED
+handoff: .ai/development/handoffs/DEV-009-developer-handoff.md
 ---
 
 # Objective
