@@ -11,7 +11,7 @@ integrated_at: 2026-11-08T11:58:00Z
 validation_status: PASSED
 ready_for_review: true
 ready_for_rereview: true
-remediation_commit: a0b58033f00d6257a9367b5ed69b0a55cbf9257f
+remediation_commit: ecb79e833957739be092de4bcf19242fa9011b0a
 remediation_handoff: .ai/development/handoffs/DEV-010-review-remediation.md
 architecture_gate_status: OPEN
 ---
@@ -49,3 +49,10 @@ Blocking findings DEV-010-B01 and DEV-010-B02 were remediated in
 Fresh focused validation passed 33/33, and `npm run validate:node` passed with
 backend 93/93, PWA 2/2, contracts 17/17, build, lint, and static checks. The
 integration is ready for independent re-review; it remains unmerged and unpushed.
+
+DEV-010-B03 was subsequently remediated in
+`ecb79e833957739be092de4bcf19242fa9011b0a` with bounded pre-mutation attempt-ID
+reservation and collision retry. Focused validation passed 36/36 and
+`npm run validate:node` passed with backend 96/96, PWA 2/2, contracts 17/17,
+build, lint, and static checks. The integration remains ready for independent
+re-review, unmerged, and unpushed.
