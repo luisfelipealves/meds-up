@@ -33,6 +33,10 @@ test("claim identity contracts are closed, canonical, and contain no clinical fi
   const audit = { apiVersion: "v1", schemaVersion: 1, claimAttemptId: "attempt_01JBR6PK2M8V4X7N1Q5T9C3AZ", actorPatientSubjectId: "patient_01JBR6Q8N4M2X7K5T9V1P3AZ", claimTokenId: null, operation: "CONFIRM", outcome: "DOB_MISMATCH", occurredAt: "2026-11-08T16:01:00Z" };
   assert.deepEqual(validateClaimIdentityAuditRecord(audit), audit);
   assert.throws(() => validateClaimIdentityAuditRecord({ ...audit, dateOfBirth: "1985-04-12" }), ContractValidationError);
+  for (const control of ["\u200B", "\u200F", "\u202A", "\u202E", "\u2060", "\u2066", "\uFEFF", "\u2028", "\u2029", "\u00AD"]) {
+    assert.throws(() => validateClaimIdentityPreview({ ...preview, issuerDisplayName: `Clinica${control} Sintetica` }), ContractValidationError);
+  }
+  assert.throws(() => validateClaimIdentityPreview({ ...preview, issuerDisplayName: "Cafe\u0301" }), ContractValidationError);
 });
 
 const validInput = {

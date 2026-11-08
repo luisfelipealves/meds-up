@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ERROR_CODES } from "@medsup/contracts";
+import { toErrorEnvelope } from "../src/identity/errors.mjs";
 import { createClaimTokenService, createInMemoryClaimTokenRepository } from "../src/claims/claim-token-lifecycle.mjs";
 import {
   createClaimIdentityConfirmationService,
@@ -10,7 +11,7 @@ import {
 import { createDeterministicIdentityHarness, TEST_IDENTITIES } from "./support/deterministic-identity-harness.mjs";
 
 const NOW = Date.UTC(2026, 10, 8);
-const GENERIC = (error) => error.code === ERROR_CODES.CONFLICT && error.message === "The claim could not be completed.";
+const GENERIC = (error) => error.code === ERROR_CODES.CLAIM_IDENTITY_FAILED && error.message === "Please contact your doctor or clinic.";
 const expectFailure = (fn, predicate = GENERIC) => assert.throws(fn, predicate);
 
 async function harness({ maxFailedAttempts = 3 } = {}) {
@@ -36,7 +37,7 @@ async function harness({ maxFailedAttempts = 3 } = {}) {
   const identityRepository = createInMemoryClaimIdentityRepository({ projections: [{
     claimTokenId: issued.claimTokenId,
     prescriptionId: "prescription-0001",
-    patientName: "Ana Maria Silva",
+    initials: maskPatientName("Ana Maria Silva"),
     issuerDisplayName: "Clinica Sintetica",
     dateOfBirth: "1985-04-12",
   }] });
@@ -118,9 +119,58 @@ test("projection rejects clinical and provider-shaped leakage", async () => {
   const identity = createDeterministicIdentityHarness(TEST_IDENTITIES);
   const repository = createInMemoryClaimIdentityRepository({ projections: [] });
   assert.throws(() => createInMemoryClaimIdentityRepository({ projections: [{
-    claimTokenId: "claim_token_00000000000001", prescriptionId: "prescription_00000001", patientName: "Ana Silva",
+    claimTokenId: "claim_token_00000000000001", prescriptionId: "prescription_00000001", initials: "AS",
     issuerDisplayName: "Clinica Sintetica", dateOfBirth: "1985-04-12", medication: "forbidden",
   }] }), /invalid shape/i);
   assert.equal(typeof identity.assertAuthenticatedSubject, "function");
   assert.deepEqual(repository.inspectForTests(), { projections: [], attempts: [] });
+  for (const control of ["\u200B", "\u200F", "\u202A", "\u202E", "\u2060", "\u2066", "\uFEFF", "\u2028", "\u2029"]) {
+    assert.throws(() => createInMemoryClaimIdentityRepository({ projections: [{
+      claimTokenId: "claim_token_00000000000001", prescriptionId: "prescription_00000001", initials: "AS",
+      issuerDisplayName: `Clinica${control} Sintetica`, dateOfBirth: "1985-04-12",
+    }] }), /issuer display name/i);
+  }
+});
+
+test("repository projection and audit snapshots never retain a full patient name", async () => {
+  const h = await harness();
+  const snapshot = h.identityRepository.inspectForTests();
+  assert.deepEqual(Object.keys(snapshot.projections[0]).sort(), ["claimTokenId", "dateOfBirth", "initials", "issuerDisplayName", "prescriptionId"]);
+  assert.equal(JSON.stringify(snapshot).includes("Ana Maria Silva"), false);
+  assert.throws(() => createInMemoryClaimIdentityRepository({ projections: [{
+    claimTokenId: "claim_token_00000000000001", prescriptionId: "prescription_00000001", patientName: "Ana Silva", initials: "AS",
+    issuerDisplayName: "Clinica Sintetica", dateOfBirth: "1985-04-12",
+  }] }), /invalid shape/i);
+});
+
+test("transport envelope preserves the same generic identity failure code, shape and message", async () => {
+  const h = await harness({ maxFailedAttempts: 1 });
+  const failures = [];
+  for (const command of [{ rawToken: "malformed" }, { rawToken: h.issued.qrPayload, dateOfBirth: "1985-04-13" }]) {
+    try { h.identityService.confirm(h.patient, { dateOfBirth: "1985-04-12", ...command }); } catch (error) { failures.push(error); }
+  }
+  try { h.identityService.preview(h.patient, { rawToken: h.issued.qrPayload }); } catch (error) { failures.push(error); }
+  const envelopes = failures.map((error) => ({ error, envelope: toErrorEnvelope(error, "req_claim_identity_0001") }));
+  assert.equal(new Set(envelopes.map(({ envelope }) => JSON.stringify(envelope.error))).size, 1);
+  assert.equal(envelopes[0].envelope.error.message, "Please contact your doctor or clinic.");
+});
+
+test("audit and repository failures cannot escape as TypeError", async () => {
+  const h = await harness();
+  const failingRepository = {
+    getByClaimTokenId() { throw new TypeError("repository failure"); },
+    failedAttempts() { return 0; },
+    recordAttempt() { throw new TypeError("audit failure"); },
+    inspectForTests() { return {}; },
+  };
+  const service = createClaimIdentityConfirmationService({
+    assertAuthenticatedSubject: h.identity.assertAuthenticatedSubject,
+    claimTokenLifecycle: h.tokenService,
+    repository: failingRepository,
+    clock: () => NOW,
+    createId: (prefix) => `${prefix}_99999999999999999999`,
+    rateLimit: { maxFailedAttempts: 5, windowMs: 900_000 },
+    isAllowedIssuerDisplayName: () => true,
+  });
+  assert.throws(() => service.confirm(h.patient, { rawToken: h.issued.qrPayload, dateOfBirth: "1985-04-12" }), GENERIC);
 });

@@ -20,6 +20,7 @@ export const ERROR_CODES = Object.freeze({
   SESSION_EXPIRED: "SESSION_EXPIRED",
   SESSION_REVOKED: "SESSION_REVOKED",
   DEVICE_REVOKED: "DEVICE_REVOKED",
+  CLAIM_IDENTITY_FAILED: "CLAIM_IDENTITY_FAILED",
   INTERNAL_ERROR: "INTERNAL_ERROR"
 });
 
@@ -37,6 +38,7 @@ const ERROR_DEFINITIONS = Object.freeze({
   SESSION_EXPIRED: ["The session has expired.", false],
   SESSION_REVOKED: ["The session is not active.", false],
   DEVICE_REVOKED: ["The device is not authorized to synchronize.", false],
+  CLAIM_IDENTITY_FAILED: ["Please contact your doctor or clinic.", false],
   INTERNAL_ERROR: ["The request could not be completed.", true]
 });
 
@@ -352,12 +354,18 @@ const isCivilDate = (value) => {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 };
 
+const isSafeIssuerDisplayName = (candidate) => typeof candidate === "string"
+  && candidate.length >= 1
+  && candidate.length <= 120
+  && candidate.normalize("NFKC") === candidate
+  && !/[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u.test(candidate);
+
 export function validateClaimIdentityPreview(value) {
   return validateObject("ClaimIdentityPreview", value, {
     apiVersion: (candidate) => candidate === API_VERSION,
     schemaVersion: (candidate) => candidate === SCHEMA_VERSION,
     initials: (candidate) => typeof candidate === "string" && /^\p{L}{1,2}$/u.test(candidate),
-    issuerDisplayName: (candidate) => typeof candidate === "string" && candidate.length >= 1 && candidate.length <= 120 && !/[\u0000-\u001f\u007f]/u.test(candidate)
+    issuerDisplayName: isSafeIssuerDisplayName
   });
 }
 

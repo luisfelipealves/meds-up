@@ -2,14 +2,15 @@ import { ERROR_CODES, ROLES } from "@medsup/contracts";
 import { FoundationError } from "../identity/errors.mjs";
 import { createRoleGuard } from "../identity/subject.mjs";
 
-const GENERIC_FAILURE_MESSAGE = "The claim could not be completed.";
+const GENERIC_FAILURE_MESSAGE = "Please contact your doctor or clinic.";
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const INITIALS_PATTERN = /^\p{L}{1,2}$/u;
 const OUTCOMES = new Set(["PREVIEWED", "CONFIRMED", "INVALID_TOKEN", "DOB_MISMATCH", "RATE_LIMITED", "INTERNAL_ERROR"]);
 const FAILED_OUTCOMES = new Set(["INVALID_TOKEN", "DOB_MISMATCH", "RATE_LIMITED", "INTERNAL_ERROR"]);
 
 function clone(value) { return structuredClone(value); }
-function genericFailure() { return new FoundationError(ERROR_CODES.CONFLICT, GENERIC_FAILURE_MESSAGE); }
+function genericFailure() { return new FoundationError(ERROR_CODES.CLAIM_IDENTITY_FAILED, GENERIC_FAILURE_MESSAGE); }
+function isGenericFailure(error) { return error?.code === ERROR_CODES.CLAIM_IDENTITY_FAILED && error?.message === GENERIC_FAILURE_MESSAGE; }
 function isRecord(value) { return value !== null && typeof value === "object" && !Array.isArray(value); }
 function requireOpaqueId(value, label) {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]{16,128}$/.test(value)) throw new TypeError(`${label} must be an opaque ID`);
@@ -31,6 +32,15 @@ function requireCivilDate(value, label) {
   return value;
 }
 
+function normalizeIssuerDisplayName(value) {
+  if (typeof value !== "string") throw new TypeError("Issuer display name is not allow-listed");
+  const normalized = value.normalize("NFKC");
+  if (normalized !== value || normalized.length < 1 || normalized.length > 120 || /[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u.test(normalized)) {
+    throw new TypeError("Issuer display name is not allow-listed");
+  }
+  return normalized;
+}
+
 /** Derives at most first/last initials at the trusted boundary; full names never leave it. */
 export function maskPatientName(patientName) {
   if (typeof patientName !== "string") throw new TypeError("Patient name must be a string");
@@ -46,15 +56,16 @@ export function maskPatientName(patientName) {
 function validateProjection(projection, isAllowedIssuerDisplayName) {
   if (!isRecord(projection)) throw new TypeError("Claim identity projection must be an object");
   const keys = Object.keys(projection).sort();
-  if (keys.join(",") !== "claimTokenId,dateOfBirth,issuerDisplayName,patientName,prescriptionId") throw new TypeError("Claim identity projection has an invalid shape");
+  if (keys.join(",") !== "claimTokenId,dateOfBirth,initials,issuerDisplayName,prescriptionId") throw new TypeError("Claim identity projection has an invalid shape");
   requireOpaqueId(projection.claimTokenId, "claimTokenId");
   requireOpaqueId(projection.prescriptionId, "prescriptionId");
   requireCivilDate(projection.dateOfBirth, "dateOfBirth");
-  if (typeof projection.issuerDisplayName !== "string" || projection.issuerDisplayName.length < 1 || projection.issuerDisplayName.length > 120 || /[\u0000-\u001f\u007f]/u.test(projection.issuerDisplayName) || isAllowedIssuerDisplayName(projection.issuerDisplayName) !== true) {
+  const issuerDisplayName = normalizeIssuerDisplayName(projection.issuerDisplayName);
+  if (isAllowedIssuerDisplayName(issuerDisplayName) !== true) {
     throw new TypeError("Issuer display name is not allow-listed");
   }
-  maskPatientName(projection.patientName);
-  return projection;
+  if (typeof projection.initials !== "string" || !INITIALS_PATTERN.test(projection.initials)) throw new TypeError("Patient initials are invalid");
+  return { ...projection, issuerDisplayName };
 }
 
 function requireRepository(repository) {
@@ -98,6 +109,9 @@ export function createClaimIdentityConfirmationService({
     if (!OUTCOMES.has(outcome)) throw new TypeError("Audit outcome is not allow-listed");
     return identityRepository.recordAttempt({ claimAttemptId: attempt, actorPatientSubjectId: subjectId, claimTokenId, operation, outcome, now });
   }
+  function safeRecordAttempt(record) {
+    try { return recordAttempt(record); } catch { return null; }
+  }
   function limited(subjectId, now) {
     return identityRepository.failedAttempts(subjectId, now, rateLimit.windowMs) >= rateLimit.maxFailedAttempts;
   }
@@ -109,7 +123,7 @@ export function createClaimIdentityConfirmationService({
     return { token, projection: validateProjection(projection, isAllowedIssuerDisplayName) };
   }
   function masked(projection) {
-    return Object.freeze({ initials: maskPatientName(projection.patientName), issuerDisplayName: projection.issuerDisplayName });
+    return Object.freeze({ initials: projection.initials, issuerDisplayName: projection.issuerDisplayName });
   }
 
   return Object.freeze({
@@ -120,19 +134,19 @@ export function createClaimIdentityConfirmationService({
       let result = null;
       try {
         if (limited(actor.subjectId, now)) {
-          recordAttempt({ subjectId: actor.subjectId, operation: "PREVIEW", outcome: "RATE_LIMITED", now, attempt });
+          safeRecordAttempt({ subjectId: actor.subjectId, operation: "PREVIEW", outcome: "RATE_LIMITED", now, attempt });
           throw genericFailure();
         }
         result = projectionFor(actor, command?.rawToken, now);
         if (result === null) {
-          recordAttempt({ subjectId: actor.subjectId, operation: "PREVIEW", outcome: "INVALID_TOKEN", now, attempt });
+          safeRecordAttempt({ subjectId: actor.subjectId, operation: "PREVIEW", outcome: "INVALID_TOKEN", now, attempt });
           throw genericFailure();
         }
-        recordAttempt({ subjectId: actor.subjectId, claimTokenId: result.token.claimTokenId, operation: "PREVIEW", outcome: "PREVIEWED", now, attempt });
+        if (!safeRecordAttempt({ subjectId: actor.subjectId, claimTokenId: result.token.claimTokenId, operation: "PREVIEW", outcome: "PREVIEWED", now, attempt })) throw new Error("Audit unavailable");
         return masked(result.projection);
       } catch (error) {
-        if (error instanceof FoundationError) throw error;
-        recordAttempt({ subjectId: actor.subjectId, operation: "PREVIEW", outcome: "INTERNAL_ERROR", now, attempt });
+        if (isGenericFailure(error)) throw error;
+        safeRecordAttempt({ subjectId: actor.subjectId, operation: "PREVIEW", outcome: "INTERNAL_ERROR", now, attempt });
         throw genericFailure();
       }
     },
@@ -143,27 +157,27 @@ export function createClaimIdentityConfirmationService({
       const attempt = attemptId();
       try {
         if (limited(actor.subjectId, now)) {
-          recordAttempt({ subjectId: actor.subjectId, operation: "CONFIRM", outcome: "RATE_LIMITED", now, attempt });
+          safeRecordAttempt({ subjectId: actor.subjectId, operation: "CONFIRM", outcome: "RATE_LIMITED", now, attempt });
           throw genericFailure();
         }
         const rawToken = command?.rawToken;
         const suppliedDob = command?.dateOfBirth;
         const result = projectionFor(actor, rawToken, now);
         if (result === null || !isCivilDate(suppliedDob)) {
-          recordAttempt({ subjectId: actor.subjectId, claimTokenId: result?.token.claimTokenId ?? null, operation: "CONFIRM", outcome: result === null ? "INVALID_TOKEN" : "DOB_MISMATCH", now, attempt });
+          safeRecordAttempt({ subjectId: actor.subjectId, claimTokenId: result?.token.claimTokenId ?? null, operation: "CONFIRM", outcome: result === null ? "INVALID_TOKEN" : "DOB_MISMATCH", now, attempt });
           throw genericFailure();
         }
         if (suppliedDob !== result.projection.dateOfBirth) {
-          recordAttempt({ subjectId: actor.subjectId, claimTokenId: result.token.claimTokenId, operation: "CONFIRM", outcome: "DOB_MISMATCH", now, attempt });
+          safeRecordAttempt({ subjectId: actor.subjectId, claimTokenId: result.token.claimTokenId, operation: "CONFIRM", outcome: "DOB_MISMATCH", now, attempt });
           throw genericFailure();
         }
-        recordAttempt({ subjectId: actor.subjectId, claimTokenId: result.token.claimTokenId, operation: "CONFIRM", outcome: "CONFIRMED", now, attempt });
+        if (!safeRecordAttempt({ subjectId: actor.subjectId, claimTokenId: result.token.claimTokenId, operation: "CONFIRM", outcome: "CONFIRMED", now, attempt })) throw new Error("Audit unavailable");
         const capability = Object.freeze({ type: "CLAIM_IDENTITY_CONFIRMED", version: 1 });
         capabilities.set(capability, Object.freeze({ subjectId: actor.subjectId, rawToken }));
         return capability;
       } catch (error) {
-        if (error instanceof FoundationError) throw error;
-        recordAttempt({ subjectId: actor.subjectId, operation: "CONFIRM", outcome: "INTERNAL_ERROR", now, attempt });
+        if (isGenericFailure(error)) throw error;
+        safeRecordAttempt({ subjectId: actor.subjectId, operation: "CONFIRM", outcome: "INTERNAL_ERROR", now, attempt });
         throw genericFailure();
       }
     },
@@ -186,8 +200,8 @@ export function createInMemoryClaimIdentityRepository({ projections = [], before
   const byToken = new Map();
   const attempts = new Map();
   for (const projection of projections) {
-    validateProjection(projection, () => true);
-    byToken.set(projection.claimTokenId, Object.freeze(clone(projection)));
+    const normalized = validateProjection(projection, () => true);
+    byToken.set(normalized.claimTokenId, Object.freeze(clone(normalized)));
   }
   return Object.freeze({
     getByClaimTokenId(claimTokenId) { return byToken.has(claimTokenId) ? clone(byToken.get(claimTokenId)) : null; },

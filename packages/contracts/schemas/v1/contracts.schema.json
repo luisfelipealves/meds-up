@@ -205,7 +205,7 @@
       "properties": {
         "apiVersion": { "const": "v1" }, "schemaVersion": { "const": 1 },
         "initials": { "type": "string", "pattern": "^\\p{L}{1,2}$" },
-        "issuerDisplayName": { "type": "string", "minLength": 1, "maxLength": 120, "pattern": "^[^\\u0000-\\u001F\\u007F]+$" }
+        "issuerDisplayName": { "type": "string", "minLength": 1, "maxLength": 120, "pattern": "^(?!.*[\\u0000-\\u001F\\u007F\\u0080-\\u009F\\u00AD\\u0600-\\u0605\\u061C\\u06DD\\u070F\\u0890-\\u0891\\u08E2\\u180E\\u200B-\\u200F\\u2028\\u2029\\u202A-\\u202E\\u2060-\\u2064\\u2066-\\u206F\\uFEFF\\uFFF9-\\uFFFB]).*$" }
       }
     },
     "ClaimIdentityConfirmationCommand": {
@@ -251,6 +251,7 @@
             { "$ref": "#/$defs/ErrorEnvelope/$defs/SESSION_EXPIRED" },
             { "$ref": "#/$defs/ErrorEnvelope/$defs/SESSION_REVOKED" },
             { "$ref": "#/$defs/ErrorEnvelope/$defs/DEVICE_REVOKED" },
+            { "$ref": "#/$defs/ErrorEnvelope/$defs/CLAIM_IDENTITY_FAILED" },
             { "$ref": "#/$defs/ErrorEnvelope/$defs/INTERNAL_ERROR" }
           ]
         }
@@ -307,6 +308,10 @@
         "DEVICE_REVOKED": {
           "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
           "properties": { "code": { "const": "DEVICE_REVOKED" }, "message": { "const": "The device is not authorized to synchronize." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": false } }
+        },
+        "CLAIM_IDENTITY_FAILED": {
+          "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
+          "properties": { "code": { "const": "CLAIM_IDENTITY_FAILED" }, "message": { "const": "Please contact your doctor or clinic." }, "requestId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16,128}$" }, "retryable": { "const": false } }
         },
         "INTERNAL_ERROR": {
           "type": "object", "additionalProperties": false, "required": ["code", "message", "requestId", "retryable"],
