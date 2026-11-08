@@ -20,14 +20,21 @@ handoff: .ai/development/handoffs/DEV-009-developer-handoff.md
 remediation_metadata: .ai/development/handoffs/DEV-009-review-remediation.md
 remediation_status: B1_B2_N1_REMEDIATED_PENDING_REREVIEW
 remediated_at: 2026-11-08T00:00:00Z
-remediation_commit: beb43af76055d820d1e2aca8a0d7ed451d2c0428
+remediation_source_commits: [152f198, beb43af, 40f5271, 1436c77]
+remediation_commits: [591ae78, ffe7b0b, fef87d5, 6376a54]
+remediation_commit: ffe7b0b5a7d9c6906a2f3cc708bce8db9a1e4cce
 integration_branch: agent/integration-dev-009
 integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-009
 integration_base_commit: 479db3c9a00b887dc8c82d40dec4793532c8c79d
-integration_commits: [8cf9a38, 4c54701, 72de2f7, 96869eb]
+integration_commits: [8cf9a38, 4c54701, 72de2f7, 96869eb, 591ae78, ffe7b0b, fef87d5, 6376a54]
 integration_handoff: .ai/development/integration/DEV-009-integration-handoff.md
-integrated_at: 2026-11-08T10:37:37Z
-ready_for_review: true
+integrated_at: 2026-11-08T10:49:00Z
+ready_for_rereview: true
+validation_status: PASSED
+focused_tests: 37/37
+validate_node: PASSED
+validate_script: PASSED
+diff_check: PASSED
 ---
 
 # Objective
