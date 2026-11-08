@@ -17,12 +17,18 @@ import {
 import { createDeterministicIdentityHarness, TEST_IDENTITIES } from "./support/deterministic-identity-harness.mjs";
 
 const NOW = Date.UTC(2026, 10, 8, 12);
+const OTHER_PATIENT = Object.freeze({
+  subjectId: "test-patient-0002",
+  role: "patient",
+  credential: Object.freeze({ login: "other-patient@example.invalid", secret: "other-patient-safe-secret" }),
+});
 
 async function harness({ associationRepositoryOptions, associationClock, now = NOW } = {}) {
   let currentTime = now;
-  const identity = createDeterministicIdentityHarness(TEST_IDENTITIES);
+  const identity = createDeterministicIdentityHarness({ ...TEST_IDENTITIES, OTHER_PATIENT });
   const doctor = await identity.authenticate(TEST_IDENTITIES.DOCTOR.credential);
   const patient = await identity.authenticate(TEST_IDENTITIES.PATIENT.credential);
+  const otherPatient = await identity.authenticate(OTHER_PATIENT.credential);
   let id = 0;
   const createId = (prefix) => `${prefix}_${String(++id).padStart(20, "0")}`;
   const tokenRepository = createInMemoryClaimTokenRepository();
@@ -60,6 +66,7 @@ async function harness({ associationRepositoryOptions, associationClock, now = N
     identity,
     doctor,
     patient,
+    otherPatient,
     issued,
     tokenService,
     identityService,
@@ -99,6 +106,111 @@ test("association and token consumption share one transaction timestamp", async 
 
   assert.equal(result.association.associatedAt, token.consumedAt);
   assert.equal(result.audit.occurredAt, token.consumedAt);
+});
+
+test("patient association identifier collision preserves the active token and pre-existing association audit", async () => {
+  const h = await harness();
+  h.associationRepository.prepareAssociation({
+    patientAssociationId: "patient_association_00000000000000000004",
+    prescriptionId: "prescription-seed-0001",
+    patientSubjectId: h.patient.subjectId,
+    ownerDoctorId: h.doctor.subjectId,
+    auditEventId: "association_audit_seed_000000000001",
+    occurredAt: new Date(NOW).toISOString(),
+  }).commit();
+  const before = h.associationRepository.inspectForTests();
+  const capability = h.identityService.confirm(h.patient, {
+    rawToken: h.issued.qrPayload,
+    dateOfBirth: "1985-04-12",
+  });
+
+  await assert.rejects(
+    h.associationService.associateConfirmed(h.patient, capability),
+    (error) => error.code === ERROR_CODES.CLAIM_IDENTITY_FAILED,
+  );
+
+  assert.equal(h.tokenRepository.inspectForTests().tokens[0].status, "ACTIVE");
+  assert.deepEqual(h.associationRepository.inspectForTests(), before);
+  assert.deepEqual(h.tokenRepository.inspectForTests().attempts.map(({ outcome }) => outcome), ["FAILED"]);
+});
+
+test("association audit identifier collision preserves the active token and pre-existing association audit", async () => {
+  const h = await harness();
+  h.associationRepository.prepareAssociation({
+    patientAssociationId: "patient_association_seed_000000000001",
+    prescriptionId: "prescription-seed-0001",
+    patientSubjectId: h.patient.subjectId,
+    ownerDoctorId: h.doctor.subjectId,
+    auditEventId: "association_audit_00000000000000000005",
+    occurredAt: new Date(NOW).toISOString(),
+  }).commit();
+  const before = h.associationRepository.inspectForTests();
+  const capability = h.identityService.confirm(h.patient, {
+    rawToken: h.issued.qrPayload,
+    dateOfBirth: "1985-04-12",
+  });
+
+  await assert.rejects(
+    h.associationService.associateConfirmed(h.patient, capability),
+    (error) => error.code === ERROR_CODES.CLAIM_IDENTITY_FAILED,
+  );
+
+  assert.equal(h.tokenRepository.inspectForTests().tokens[0].status, "ACTIVE");
+  assert.deepEqual(h.associationRepository.inspectForTests(), before);
+  assert.deepEqual(h.tokenRepository.inspectForTests().attempts.map(({ outcome }) => outcome), ["FAILED"]);
+});
+
+test("failed association commit releases its indexes without deleting pre-existing records", () => {
+  let fail = false;
+  const repository = createInMemoryPrescriptionAssociationRepository({
+    beforeCommit() {
+      if (fail) {
+        fail = false;
+        throw new Error("synthetic index rollback fault");
+      }
+    },
+  });
+  const seed = {
+    patientAssociationId: "patient_association_seed_000000000001",
+    prescriptionId: "prescription-seed-0001",
+    patientSubjectId: "test-patient-0001",
+    ownerDoctorId: "test-doctor-0001",
+    auditEventId: "association_audit_seed_000000000001",
+    occurredAt: new Date(NOW).toISOString(),
+  };
+  const retryable = {
+    ...seed,
+    patientAssociationId: "patient_association_retry_00000000001",
+    prescriptionId: "prescription-retry-0001",
+    auditEventId: "association_audit_retry_00000000001",
+  };
+  repository.prepareAssociation(seed).commit();
+  const before = repository.inspectForTests();
+  fail = true;
+
+  assert.throws(() => repository.prepareAssociation(retryable).commit(), /synthetic index rollback fault/);
+  assert.deepEqual(repository.inspectForTests(), before);
+
+  repository.prepareAssociation(retryable).commit();
+  assert.equal(repository.inspectForTests().associations.length, 2);
+  assert.equal(repository.inspectForTests().audits.length, 2);
+});
+
+test("a different patient cannot complete a confirmed handoff or mutate token and association state", async () => {
+  const h = await harness();
+  const capability = h.identityService.confirm(h.patient, {
+    rawToken: h.issued.qrPayload,
+    dateOfBirth: "1985-04-12",
+  });
+
+  await assert.rejects(
+    h.associationService.associateConfirmed(h.otherPatient, capability),
+    (error) => error.code === ERROR_CODES.CLAIM_IDENTITY_FAILED
+      && error.message === "Please contact your doctor or clinic.",
+  );
+
+  assert.equal(h.tokenRepository.inspectForTests().tokens[0].status, "ACTIVE");
+  assert.deepEqual(h.associationRepository.inspectForTests(), { associations: [], audits: [] });
 });
 
 test("retrying the same confirmed handoff returns the original idempotent outcome without duplicates", async () => {
@@ -151,6 +263,9 @@ test("a later token cannot associate the same prescription again or expose assoc
   );
   assert.equal(h.associationRepository.inspectForTests().associations.length, 1);
   assert.equal(h.tokenRepository.inspectForTests().tokens.find(({ claimTokenId }) => claimTokenId === second.claimTokenId).status, "ACTIVE");
+  const failedAttempts = h.tokenRepository.inspectForTests().attempts.filter(({ claimTokenId }) => claimTokenId === second.claimTokenId);
+  assert.equal(failedAttempts.length, 1);
+  assert.equal(failedAttempts[0].outcome, "FAILED");
 });
 
 test("concurrent confirmed completions create at most one association", async () => {
@@ -185,12 +300,14 @@ test("association commit failure rolls back token, association and audits so the
   await assert.rejects(h.associationService.associateConfirmed(h.patient, capability),
     (error) => error.code === ERROR_CODES.CLAIM_IDENTITY_FAILED);
   assert.equal(h.tokenRepository.inspectForTests().tokens[0].status, "ACTIVE");
-  assert.equal(h.tokenRepository.inspectForTests().attempts.length, 0);
+  assert.deepEqual(h.tokenRepository.inspectForTests().attempts.map(({ outcome }) => outcome), ["FAILED"]);
   assert.deepEqual(h.associationRepository.inspectForTests(), { associations: [], audits: [] });
 
   const retried = await h.associationService.associateConfirmed(h.patient, capability);
   assert.equal(retried.association.prescriptionId, "prescription-0001");
   assert.equal(h.tokenRepository.inspectForTests().tokens[0].status, "CONSUMED");
+  assert.deepEqual(h.tokenRepository.inspectForTests().attempts.map(({ outcome }) => outcome), ["FAILED", "CONSUMED"]);
+  assert.equal(new Set(h.tokenRepository.inspectForTests().attempts.map(({ claimAttemptId }) => claimAttemptId)).size, 2);
   assert.equal(h.associationRepository.inspectForTests().associations.length, 1);
 });
 

@@ -13,6 +13,7 @@ const FAILED_OUTCOMES = new Set([
   "REVOKED",
   "REPLACED",
   "ALREADY_CONSUMED",
+  "FAILED",
 ]);
 
 function clone(value) {
@@ -366,7 +367,17 @@ export function createInMemoryClaimTokenRepository({ beforeCommit = () => {} } =
       return clone(completed);
     } catch (error) {
       restore(before);
-      if (prepared !== null) prepared.rollback();
+      try {
+        if (prepared !== null) prepared.rollback();
+      } finally {
+        audit({
+          attemptId,
+          patientSubjectId,
+          claimTokenId: validFormat ? tokenIdByDigest.get(tokenDigest) ?? null : null,
+          outcome: "FAILED",
+          now,
+        });
+      }
       throw error;
     }
   }

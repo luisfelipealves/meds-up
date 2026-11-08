@@ -235,11 +235,11 @@ test("transaction failure rolls back all state and a retry succeeds once", async
   await assert.rejects(h.service.consume(h.patient, { rawToken: issued.qrPayload }), /synthetic commit fault/);
   let snapshot = h.repository.inspectForTests();
   assert.equal(snapshot.tokens[0].status, "ACTIVE");
-  assert.equal(snapshot.attempts.length, 0);
+  assert.deepEqual(snapshot.attempts.map(({ outcome }) => outcome), ["FAILED"]);
   assert.equal((await h.service.consume(h.patient, { rawToken: issued.qrPayload })).prescriptionId, "prescription-0001");
   snapshot = h.repository.inspectForTests();
   assert.equal(snapshot.tokens[0].status, "CONSUMED");
-  assert.equal(snapshot.attempts.length, 1);
+  assert.deepEqual(snapshot.attempts.map(({ outcome }) => outcome), ["FAILED", "CONSUMED"]);
 });
 
 test("raw secrets do not leak through errors, owner projections, persistence, logs, telemetry fields, or URLs", async () => {
