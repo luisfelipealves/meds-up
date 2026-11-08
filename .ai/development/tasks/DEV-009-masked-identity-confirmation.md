@@ -2,7 +2,7 @@
 id: DEV-009
 type: development
 title: Implement masked pre-claim identity confirmation
-status: INTEGRATED
+status: REVIEW
 source: [PD-001, PD-002]
 depends_on: [DEV-008]
 parallel_class: SERIAL
@@ -11,7 +11,11 @@ branch: agent/dev-009-masked-identity
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-009-masked-identity
 implemented_at: 2026-11-08T10:34:26Z
 implementation_commit: e0486a0
-review_status: SELF_VALIDATED
+review_status: FAIL
+review: .ai/reviews/DEV-009-independent-review.md
+review_blocking_findings: 2
+review_non_blocking_findings: 1
+reviewed_commit: 40ec9df81cf6f90bc373ea4465908ca743dbe2fb
 handoff: .ai/development/handoffs/DEV-009-developer-handoff.md
 integration_branch: agent/integration-dev-009
 integration_worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-009
