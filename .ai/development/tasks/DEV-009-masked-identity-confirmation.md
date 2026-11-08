@@ -49,6 +49,9 @@ human_testing_handoff: .ai/development/handoffs/DEV-009-human-testing.md
 human_testing_status: APPROVED
 human_approval: .ai/development/handoffs/DEV-009-human-approval.md
 human_approved_at: 2026-11-08T11:32:48Z
+merge_authorized: true
+push_authorized: true
+merge_push_authorized_at: 2026-11-08T11:37:07Z
 merge_status: NOT_MERGED
 push_status: NOT_PUSHED
 rereview: .ai/reviews/DEV-009-independent-rereview.md
