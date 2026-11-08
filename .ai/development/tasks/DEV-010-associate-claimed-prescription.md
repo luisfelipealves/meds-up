@@ -2,7 +2,7 @@
 id: DEV-010
 type: development
 title: Associate claimed prescription to patient
-status: HUMAN_TESTING
+status: DONE
 source: [PD-001, PD-002]
 depends_on: [DEV-003, DEV-008, DEV-009]
 parallel_class: SERIAL
@@ -46,8 +46,12 @@ human_approval: .ai/development/handoffs/DEV-010-human-approval.md
 human_testing_status: APPROVED
 merge_authorized: true
 push_authorized: true
-merge_status: NOT_MERGED
-push_status: NOT_PUSHED
+merge_status: MERGED
+push_status: PUSHED
+merged_main_commit: fa87aaaeb65d3d480fa71b4bbd6f4f3f038d984b
+merged_at: 2026-11-08T12:22:10Z
+pushed_at: 2026-11-08T12:22:10Z
+completion_handoff: .ai/development/handoffs/DEV-010-authorized-merge.md
 ---
 
 # Objective
