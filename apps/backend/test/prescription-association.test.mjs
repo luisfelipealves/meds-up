@@ -23,14 +23,23 @@ const OTHER_PATIENT = Object.freeze({
   credential: Object.freeze({ login: "other-patient@example.invalid", secret: "other-patient-safe-secret" }),
 });
 
-async function harness({ associationRepositoryOptions, associationClock, now = NOW } = {}) {
+async function harness({
+  associationRepositoryOptions,
+  associationClock,
+  claimAttemptIds = [],
+  maxFailedAttempts = 5,
+  now = NOW,
+} = {}) {
   let currentTime = now;
   const identity = createDeterministicIdentityHarness({ ...TEST_IDENTITIES, OTHER_PATIENT });
   const doctor = await identity.authenticate(TEST_IDENTITIES.DOCTOR.credential);
   const patient = await identity.authenticate(TEST_IDENTITIES.PATIENT.credential);
   const otherPatient = await identity.authenticate(OTHER_PATIENT.credential);
   let id = 0;
-  const createId = (prefix) => `${prefix}_${String(++id).padStart(20, "0")}`;
+  const queuedClaimAttemptIds = [...claimAttemptIds];
+  const createId = (prefix) => prefix === "claim_attempt" && queuedClaimAttemptIds.length > 0
+    ? queuedClaimAttemptIds.shift()
+    : `${prefix}_${String(++id).padStart(20, "0")}`;
   const tokenRepository = createInMemoryClaimTokenRepository();
   const tokenService = createClaimTokenService({
     assertAuthenticatedSubject: identity.assertAuthenticatedSubject,
@@ -38,6 +47,7 @@ async function harness({ associationRepositoryOptions, associationClock, now = N
     repository: tokenRepository,
     clock: () => currentTime,
     createId,
+    rateLimit: { maxFailedAttempts, windowMs: 15 * 60 * 1000 },
   });
   const issued = await tokenService.issue(doctor, { prescriptionId: "prescription-0001" });
   const identityService = createClaimIdentityConfirmationService({
@@ -158,6 +168,83 @@ test("association audit identifier collision preserves the active token and pre-
   assert.equal(h.tokenRepository.inspectForTests().tokens[0].status, "ACTIVE");
   assert.deepEqual(h.associationRepository.inspectForTests(), before);
   assert.deepEqual(h.tokenRepository.inspectForTests().attempts.map(({ outcome }) => outcome), ["FAILED"]);
+});
+
+test("duplicate association failure allocates a distinct failed-attempt ID after a collision and still counts toward rate limiting", async () => {
+  const collidingAttemptId = "claim_attempt_existing_000000000001";
+  const failedAttemptId = "claim_attempt_failed_0000000000001";
+  const h = await harness({
+    claimAttemptIds: [collidingAttemptId, collidingAttemptId, failedAttemptId],
+    maxFailedAttempts: 2,
+  });
+  await assert.rejects(h.tokenService.consume(h.patient, { rawToken: "A".repeat(43) }));
+  const existingAttempt = h.tokenRepository.inspectForTests().attempts[0];
+  h.associationRepository.prepareAssociation({
+    patientAssociationId: "patient_association_existing_000001",
+    prescriptionId: "prescription-0001",
+    patientSubjectId: h.patient.subjectId,
+    ownerDoctorId: h.doctor.subjectId,
+    auditEventId: "association_audit_existing_000000001",
+    occurredAt: new Date(NOW).toISOString(),
+  }).commit();
+  const associationBefore = h.associationRepository.inspectForTests();
+  const capability = h.identityService.confirm(h.patient, {
+    rawToken: h.issued.qrPayload,
+    dateOfBirth: "1985-04-12",
+  });
+
+  await assert.rejects(
+    h.associationService.associateConfirmed(h.patient, capability),
+    (error) => error.code === ERROR_CODES.CLAIM_IDENTITY_FAILED
+      && error.message === "Please contact your doctor or clinic.",
+  );
+
+  const afterFailure = h.tokenRepository.inspectForTests();
+  assert.equal(afterFailure.tokens[0].status, "ACTIVE");
+  assert.deepEqual(h.associationRepository.inspectForTests(), associationBefore);
+  assert.deepEqual(afterFailure.attempts[0], existingAttempt);
+  assert.deepEqual(afterFailure.attempts.map(({ outcome }) => outcome), ["INVALID_TOKEN", "FAILED"]);
+  assert.equal(afterFailure.attempts[1].claimAttemptId, failedAttemptId);
+  assert.notEqual(afterFailure.attempts[1].claimAttemptId, existingAttempt.claimAttemptId);
+  assert.deepEqual(Object.keys(afterFailure.attempts[1]).sort(), [
+    "actorPatientSubjectId",
+    "claimAttemptId",
+    "claimTokenId",
+    "occurredAt",
+    "outcome",
+  ]);
+
+  await assert.rejects(
+    h.associationService.associateConfirmed(h.patient, capability),
+    (error) => error.code === ERROR_CODES.CLAIM_IDENTITY_FAILED,
+  );
+  assert.deepEqual(h.tokenRepository.inspectForTests().attempts.map(({ outcome }) => outcome), [
+    "INVALID_TOKEN",
+    "FAILED",
+    "RATE_LIMITED",
+  ]);
+  assert.equal(h.tokenRepository.inspectForTests().tokens[0].status, "ACTIVE");
+  assert.deepEqual(h.associationRepository.inspectForTests(), associationBefore);
+});
+
+test("attempt-ID reservation exhaustion fails closed before association mutation", async () => {
+  const collidingAttemptId = "claim_attempt_existing_000000000003";
+  const h = await harness({ claimAttemptIds: Array(9).fill(collidingAttemptId) });
+  await assert.rejects(h.tokenService.consume(h.patient, { rawToken: "C".repeat(43) }));
+  const before = h.tokenRepository.inspectForTests();
+  const capability = h.identityService.confirm(h.patient, {
+    rawToken: h.issued.qrPayload,
+    dateOfBirth: "1985-04-12",
+  });
+
+  await assert.rejects(
+    h.associationService.associateConfirmed(h.patient, capability),
+    (error) => error.code === ERROR_CODES.CLAIM_IDENTITY_FAILED
+      && error.message === "Please contact your doctor or clinic.",
+  );
+
+  assert.deepEqual(h.tokenRepository.inspectForTests(), before);
+  assert.deepEqual(h.associationRepository.inspectForTests(), { associations: [], audits: [] });
 });
 
 test("failed association commit releases its indexes without deleting pre-existing records", () => {
@@ -308,6 +395,56 @@ test("association commit failure rolls back token, association and audits so the
   assert.equal(h.tokenRepository.inspectForTests().tokens[0].status, "CONSUMED");
   assert.deepEqual(h.tokenRepository.inspectForTests().attempts.map(({ outcome }) => outcome), ["FAILED", "CONSUMED"]);
   assert.equal(new Set(h.tokenRepository.inspectForTests().attempts.map(({ claimAttemptId }) => claimAttemptId)).size, 2);
+  assert.equal(h.associationRepository.inspectForTests().associations.length, 1);
+});
+
+test("association commit failure allocates a distinct failed-attempt ID after a collision and remains retryable", async () => {
+  const collidingAttemptId = "claim_attempt_existing_000000000002";
+  const failedAttemptId = "claim_attempt_failed_0000000000002";
+  const retryAttemptId = "claim_attempt_retry_00000000000002";
+  let fail = true;
+  const h = await harness({
+    associationRepositoryOptions: {
+      beforeCommit() {
+        if (fail) {
+          fail = false;
+          throw new Error("synthetic association collision-path failure");
+        }
+      },
+    },
+    claimAttemptIds: [collidingAttemptId, collidingAttemptId, failedAttemptId, retryAttemptId],
+    maxFailedAttempts: 3,
+  });
+  await assert.rejects(h.tokenService.consume(h.patient, { rawToken: "B".repeat(43) }));
+  const existingAttempt = h.tokenRepository.inspectForTests().attempts[0];
+  const capability = h.identityService.confirm(h.patient, {
+    rawToken: h.issued.qrPayload,
+    dateOfBirth: "1985-04-12",
+  });
+
+  await assert.rejects(
+    h.associationService.associateConfirmed(h.patient, capability),
+    (error) => error.code === ERROR_CODES.CLAIM_IDENTITY_FAILED
+      && error.message === "Please contact your doctor or clinic.",
+  );
+
+  const afterFailure = h.tokenRepository.inspectForTests();
+  assert.equal(afterFailure.tokens[0].status, "ACTIVE");
+  assert.deepEqual(h.associationRepository.inspectForTests(), { associations: [], audits: [] });
+  assert.deepEqual(afterFailure.attempts[0], existingAttempt);
+  assert.deepEqual(afterFailure.attempts.map(({ outcome }) => outcome), ["INVALID_TOKEN", "FAILED"]);
+  assert.equal(afterFailure.attempts[1].claimAttemptId, failedAttemptId);
+  assert.notEqual(afterFailure.attempts[1].claimAttemptId, existingAttempt.claimAttemptId);
+
+  const retried = await h.associationService.associateConfirmed(h.patient, capability);
+  assert.equal(retried.association.prescriptionId, "prescription-0001");
+  assert.equal(h.tokenRepository.inspectForTests().tokens[0].status, "CONSUMED");
+  assert.deepEqual(h.tokenRepository.inspectForTests().attempts.map(({ outcome }) => outcome), [
+    "INVALID_TOKEN",
+    "FAILED",
+    "CONSUMED",
+  ]);
+  assert.equal(h.tokenRepository.inspectForTests().attempts[2].claimAttemptId, retryAttemptId);
   assert.equal(h.associationRepository.inspectForTests().associations.length, 1);
 });
 

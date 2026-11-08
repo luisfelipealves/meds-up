@@ -7,6 +7,7 @@ export const CLAIM_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const RAW_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const GENERATED_ID_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
+const MAX_ATTEMPT_ID_RESERVATION_TRIES = 8;
 const FAILED_OUTCOMES = new Set([
   "INVALID_TOKEN",
   "EXPIRED",
@@ -30,6 +31,15 @@ function notFound() {
 
 function claimFailure() {
   return failure(ERROR_CODES.CONFLICT, "The claim could not be completed.");
+}
+
+function preserveSecondaryFailure(error, property, secondaryError) {
+  if (secondaryError === null || error === null || (typeof error !== "object" && typeof error !== "function")) return;
+  try {
+    Object.defineProperty(error, property, { value: secondaryError });
+  } catch {
+    // The transaction error remains authoritative even when it is non-extensible.
+  }
 }
 
 function requireTime(clock) {
@@ -77,7 +87,7 @@ function isRawToken(rawToken) {
 }
 
 function requireRepository(repository) {
-  for (const method of ["issue", "getByOwner", "listByOwner", "revoke", "replace", "consume", "consumeAtomically", "resolveForConfirmation"]) {
+  for (const method of ["issue", "getByOwner", "listByOwner", "revoke", "replace", "reserveAttemptId", "consume", "consumeAtomically", "resolveForConfirmation"]) {
     if (typeof repository?.[method] !== "function") {
       throw new TypeError(`Claim-token repository must implement ${method}`);
     }
@@ -118,6 +128,14 @@ export function createClaimTokenService({
     const tokenDigest = digestToken(rawToken);
     if (typeof tokenDigest !== "string" || !/^[a-f0-9]{64}$/.test(tokenDigest)) throw new TypeError("Token digest must be a lowercase SHA-256 hex digest");
     return Object.freeze({ rawToken, tokenDigest });
+  }
+
+  function reserveAttemptId() {
+    for (let tries = 0; tries < MAX_ATTEMPT_ID_RESERVATION_TRIES; tries += 1) {
+      const candidate = requireGeneratedId(createId("claim_attempt"));
+      if (tokens.reserveAttemptId(candidate)) return candidate;
+    }
+    throw claimFailure();
   }
 
   function issuance(ownerDoctorId, prescriptionId, now) {
@@ -201,7 +219,7 @@ export function createClaimTokenService({
         tokenDigest,
         validFormat,
         patientSubjectId: actor.subjectId,
-        attemptId: requireGeneratedId(createId("claim_attempt")),
+        attemptId: reserveAttemptId(),
         now,
         rateLimit,
       });
@@ -220,7 +238,7 @@ export function createClaimTokenService({
         tokenDigest,
         validFormat,
         patientSubjectId: actor.subjectId,
-        attemptId: requireGeneratedId(createId("claim_attempt")),
+        attemptId: reserveAttemptId(),
         now,
         rateLimit,
         prepare,
@@ -248,18 +266,21 @@ export function createInMemoryClaimTokenRepository({ beforeCommit = () => {} } =
   const tokenById = new Map();
   const tokenIdByDigest = new Map();
   const attemptById = new Map();
+  const reservedAttemptIds = new Set();
 
   function snapshot() {
-    return clone({ tokenById, tokenIdByDigest, attemptById });
+    return clone({ tokenById, tokenIdByDigest, attemptById, reservedAttemptIds });
   }
 
   function restore(state) {
     tokenById.clear();
     tokenIdByDigest.clear();
     attemptById.clear();
+    reservedAttemptIds.clear();
     for (const [key, value] of state.tokenById) tokenById.set(key, value);
     for (const [key, value] of state.tokenIdByDigest) tokenIdByDigest.set(key, value);
     for (const [key, value] of state.attemptById) attemptById.set(key, value);
+    for (const value of state.reservedAttemptIds) reservedAttemptIds.add(value);
   }
 
   function atomically(operation, mutate) {
@@ -292,7 +313,7 @@ export function createInMemoryClaimTokenRepository({ beforeCommit = () => {} } =
   }
 
   function audit({ attemptId, patientSubjectId, claimTokenId, outcome, now }) {
-    if (attemptById.has(attemptId)) throw failure(ERROR_CODES.CONFLICT, "The request conflicts with the resource state.");
+    if (attemptById.has(attemptId) || !reservedAttemptIds.delete(attemptId)) throw failure(ERROR_CODES.CONFLICT, "The request conflicts with the resource state.");
     const record = Object.freeze({
       claimAttemptId: attemptId,
       actorPatientSubjectId: patientSubjectId,
@@ -367,9 +388,14 @@ export function createInMemoryClaimTokenRepository({ beforeCommit = () => {} } =
       return clone(completed);
     } catch (error) {
       restore(before);
+      let rollbackError = null;
       try {
         if (prepared !== null) prepared.rollback();
-      } finally {
+      } catch (caught) {
+        rollbackError = caught;
+      }
+      let auditError = null;
+      try {
         audit({
           attemptId,
           patientSubjectId,
@@ -377,7 +403,11 @@ export function createInMemoryClaimTokenRepository({ beforeCommit = () => {} } =
           outcome: "FAILED",
           now,
         });
+      } catch (caught) {
+        auditError = caught;
       }
+      preserveSecondaryFailure(error, "rollbackError", rollbackError);
+      preserveSecondaryFailure(error, "auditPersistenceError", auditError);
       throw error;
     }
   }
@@ -422,6 +452,12 @@ export function createInMemoryClaimTokenRepository({ beforeCommit = () => {} } =
         });
         return persist(replacement);
       });
+    },
+
+    reserveAttemptId(attemptId) {
+      if (attemptById.has(attemptId) || reservedAttemptIds.has(attemptId)) return false;
+      reservedAttemptIds.add(attemptId);
+      return true;
     },
 
     consume({ tokenDigest, validFormat, patientSubjectId, attemptId, now, rateLimit }) {
