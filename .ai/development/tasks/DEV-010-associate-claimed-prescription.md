@@ -2,7 +2,7 @@
 id: DEV-010
 type: development
 title: Associate claimed prescription to patient
-status: INTEGRATED
+status: HUMAN_TESTING
 source: [PD-001, PD-002]
 depends_on: [DEV-003, DEV-008, DEV-009]
 parallel_class: SERIAL
@@ -36,7 +36,18 @@ rereviewed_commit: e7502546014f19c4a2ba403878008083bcb093d9
 rereview_status: CHANGES_REQUIRED
 rereview_blocking_findings: 1
 rereview_non_blocking_findings: 3
-ready_for_rereview: true
+ready_for_rereview: false
+final_rereview: .ai/reviews/DEV-010-independent-final-rereview.md
+final_rereviewed_commit: ee7c8f0bdd1bbe5a6f9e8b0b218e4323f4db9d98
+final_rereview_status: PASS
+final_rereview_blocking_findings: 0
+final_rereview_non_blocking_findings: 4
+human_approval: .ai/development/handoffs/DEV-010-human-approval.md
+human_testing_status: APPROVED
+merge_authorized: true
+push_authorized: true
+merge_status: NOT_MERGED
+push_status: NOT_PUSHED
 ---
 
 # Objective
