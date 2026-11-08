@@ -5,7 +5,7 @@ status: IMPLEMENTED
 branch: agent/dev-009-masked-identity
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-009-masked-identity
 implementation_commit: e0486a0
-workflow_commit: pending
+workflow_commit: cfb46f5
 implemented_at: 2026-11-08T10:34:26Z
 assigned_agent: codex-dev-team
 architecture_gate: .ai/development/decisions/TD-001-production-health-data-processing-gate.md
