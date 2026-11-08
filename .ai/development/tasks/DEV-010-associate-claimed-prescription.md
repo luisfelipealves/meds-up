@@ -2,7 +2,7 @@
 id: DEV-010
 type: development
 title: Associate claimed prescription to patient
-status: BLOCKED
+status: INTEGRATED
 source: [PD-001, PD-002]
 depends_on: [DEV-003, DEV-008, DEV-009]
 parallel_class: SERIAL
@@ -10,7 +10,7 @@ assigned_agent: developer-dev-010
 branch: agent/dev-010-associate-claimed-prescription
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-010-associate-claimed-prescription
 started_at: 2026-11-08T11:45:02Z
-updated_at: 2026-11-08T11:55:36Z
+updated_at: 2026-11-08T12:06:30Z
 implemented_at: 2026-11-08T11:55:36Z
 implementation_commit: c8c7c809e860a647367ff81589e8021782fffbe6
 handoff: .ai/development/handoffs/DEV-010-developer-handoff.md
@@ -29,6 +29,9 @@ reviewed_commit: 7e98edfc8f71ea5f6cb97fc4ae5964b9118dc746
 review_status: CHANGES_REQUIRED
 review_blocking_findings: 2
 review_non_blocking_findings: 4
+review_remediation: .ai/development/handoffs/DEV-010-review-remediation.md
+remediation_commit: a0b58033f00d6257a9367b5ed69b0a55cbf9257f
+ready_for_rereview: true
 ---
 
 # Objective
@@ -57,9 +60,9 @@ DEV-003, DEV-008, and DEV-009.
 - Added same-handoff idempotent replay, patient-only access, generic duplicate/failure handling, and multi-doctor accumulation without clinical data exposure.
 
 # Validation Summary
-- Focused claim/identity/association tests: 29 passed, 0 failed.
-- `npm run validate:node`: backend 89 passed, PWA 2 passed, contracts 17 passed; build, lint, and static checks passed.
+- Focused claim/identity/association tests after review remediation: 33 passed, 0 failed.
+- `npm run validate:node`: backend 93 passed, PWA 2 passed, contracts 17 passed; build, lint, and static checks passed.
 - `git diff --check` and explicit syntax checks passed.
 
 # Handoff
-`.ai/development/handoffs/DEV-010-developer-handoff.md`
+`.ai/development/handoffs/DEV-010-review-remediation.md`
