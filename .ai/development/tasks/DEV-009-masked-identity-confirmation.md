@@ -2,7 +2,7 @@
 id: DEV-009
 type: development
 title: Implement masked pre-claim identity confirmation
-status: REVIEW
+status: HUMAN_TESTING
 source: [PD-001, PD-002]
 depends_on: [DEV-008]
 parallel_class: SERIAL
@@ -11,14 +11,24 @@ branch: agent/dev-009-masked-identity
 worktree: /home/felipe/projetos/meds-up-worktrees/dev-009-masked-identity
 implemented_at: 2026-11-08T10:34:26Z
 implementation_commit: e0486a0
-review_status: FAIL
-review: .ai/reviews/DEV-009-independent-review.md
-review_blocking_findings: 2
+review_status: PASS
+review: .ai/reviews/DEV-009-independent-rereview.md
+initial_review: .ai/reviews/DEV-009-independent-review.md
+review_blocking_findings: 0
 review_non_blocking_findings: 1
 reviewed_commit: 40ec9df81cf6f90bc373ea4465908ca743dbe2fb
+candidate_commit: 2e6228b05039984db23b9677db4752e36f1d3423
+candidate_branch: agent/integration-dev-009
+candidate_review: .ai/reviews/DEV-009-independent-rereview.md
+candidate_review_commit: 9ef0565
+rereview_status: PASS
+rereview_blocking_findings: 0
+rereview_non_blocking_findings: 1
+rereviewed_commit: 2e6228b05039984db23b9677db4752e36f1d3423
+rereview_record_commit: 9ef0565
 handoff: .ai/development/handoffs/DEV-009-developer-handoff.md
 remediation_metadata: .ai/development/handoffs/DEV-009-review-remediation.md
-remediation_status: B1_B2_N1_REMEDIATED_PENDING_REREVIEW
+remediation_status: B1_B2_N1_REMEDIATED_REREVIEW_PASS
 remediated_at: 2026-11-08T00:00:00Z
 remediation_source_commits: [152f198, beb43af, 40f5271, 1436c77]
 remediation_commits: [591ae78, ffe7b0b, fef87d5, 6376a54]
@@ -35,6 +45,9 @@ focused_tests: 37/37
 validate_node: PASSED
 validate_script: PASSED
 diff_check: PASSED
+human_testing_handoff: .ai/development/handoffs/DEV-009-human-testing.md
+merge_status: NOT_MERGED
+push_status: NOT_PUSHED
 rereview: .ai/reviews/DEV-009-independent-rereview.md
 rereview_status: PASS
 rereviewed_commit: 2e6228b05039984db23b9677db4752e36f1d3423

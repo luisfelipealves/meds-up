@@ -1,6 +1,6 @@
 ---
 task: DEV-009
-status: REVIEW
+status: HUMAN_TESTING
 integration_branch: agent/integration-dev-009
 worktree: /home/felipe/projetos/meds-up-worktrees/integration-dev-009
 base_commit: 479db3c9a00b887dc8c82d40dec4793532c8c79d
@@ -26,6 +26,13 @@ cherry_picked_remediation_commits:
   - 6376a542632aa395fd67a8893813ea4f9b57fa83
 integrated_at: 2026-11-08T10:49:00Z
 ready_for_rereview: true
+rereview_status: PASS
+rereviewed_head: 2e6228b05039984db23b9677db4752e36f1d3423
+rereview_record_commit: 9ef0565
+rereview_record: .ai/reviews/DEV-009-independent-rereview.md
+human_testing_handoff: .ai/development/handoffs/DEV-009-human-testing.md
+merge_status: NOT_MERGED
+push_status: NOT_PUSHED
 architecture_gate: .ai/development/decisions/TD-001-production-health-data-processing-gate.md
 ---
 
@@ -99,6 +106,19 @@ made.
 
 ## Review readiness
 
-The integration branch is ready for independent re-review of the actual
-remediation diff and the canonical task/handoff artifacts. Status remains
-`REVIEW`; no merge or push was performed.
+At this stage the integration branch was ready for independent re-review of
+the actual remediation diff and the canonical task/handoff artifacts. No merge
+or push was performed.
+
+## Independent rereview and human-testing gate
+
+Commit `75ebcfd8df78f46adae69ce368098bd7792917c2` was cherry-picked from
+`agent/rereview-dev-009` as integration commit `9ef0565`. The source commit
+changes only the rereview record and task metadata; `2e6228b05039984db23b9677db4752e36f1d3423` is its ancestor and is the reviewed
+implementation head. The rereview is PASS with zero blocking findings and one
+non-blocking N2 contract-integration note. DEV-009 is now handed to
+`HUMAN_TESTING`; the concrete local/synthetic procedure is in
+`.ai/development/handoffs/DEV-009-human-testing.md`. TD-001 remains OPEN.
+
+The current integration status is `HUMAN_TESTING`. No merge or push was
+performed.
