@@ -2,7 +2,7 @@
 id: DEV-010
 type: development
 title: Associate claimed prescription to patient
-status: INTEGRATED
+status: BLOCKED
 source: [PD-001, PD-002]
 depends_on: [DEV-003, DEV-008, DEV-009]
 parallel_class: SERIAL
@@ -31,7 +31,12 @@ review_blocking_findings: 2
 review_non_blocking_findings: 4
 review_remediation: .ai/development/handoffs/DEV-010-review-remediation.md
 remediation_commit: a0b58033f00d6257a9367b5ed69b0a55cbf9257f
-ready_for_rereview: true
+rereview: .ai/reviews/DEV-010-independent-rereview.md
+rereviewed_commit: e7502546014f19c4a2ba403878008083bcb093d9
+rereview_status: CHANGES_REQUIRED
+rereview_blocking_findings: 1
+rereview_non_blocking_findings: 3
+ready_for_rereview: false
 ---
 
 # Objective
