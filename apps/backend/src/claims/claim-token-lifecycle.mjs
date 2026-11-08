@@ -76,7 +76,7 @@ function isRawToken(rawToken) {
 }
 
 function requireRepository(repository) {
-  for (const method of ["issue", "getByOwner", "listByOwner", "revoke", "replace", "consume", "resolveForConfirmation"]) {
+  for (const method of ["issue", "getByOwner", "listByOwner", "revoke", "replace", "consume", "consumeAtomically", "resolveForConfirmation"]) {
     if (typeof repository?.[method] !== "function") {
       throw new TypeError(`Claim-token repository must implement ${method}`);
     }
@@ -208,6 +208,26 @@ export function createClaimTokenService({
       return Object.freeze({ claimTokenId: result.claimTokenId, prescriptionId: result.prescriptionId });
     },
 
+    consumeAtomically(subject, command, prepare) {
+      const actor = patient(subject);
+      if (typeof prepare !== "function") throw new TypeError("An atomic claim completion preparer is required");
+      const now = requireTime(clock);
+      const rawToken = command?.rawToken;
+      const validFormat = isRawToken(rawToken);
+      const tokenDigest = validFormat ? digestToken(rawToken) : null;
+      const result = tokens.consumeAtomically({
+        tokenDigest,
+        validFormat,
+        patientSubjectId: actor.subjectId,
+        attemptId: requireGeneratedId(createId("claim_attempt")),
+        now,
+        rateLimit,
+        prepare,
+      });
+      if (!result.success) throw claimFailure();
+      return result.result;
+    },
+
     // Internal provider-neutral boundary for DEV-009. It deliberately does not
     // mutate lifecycle state or return a secret; identity confirmation owns the
     // decision whether a later, explicit consume is allowed.
@@ -292,6 +312,65 @@ export function createInMemoryClaimTokenRepository({ beforeCommit = () => {} } =
     ).length;
   }
 
+  function consumeAtomically({ tokenDigest, validFormat, patientSubjectId, attemptId, now, rateLimit, prepare }) {
+    const before = snapshot();
+    let prepared = null;
+    try {
+      if (failedAttempts(patientSubjectId, now, rateLimit.windowMs) >= rateLimit.maxFailedAttempts) {
+        audit({ attemptId, patientSubjectId, claimTokenId: null, outcome: "RATE_LIMITED", now });
+        const failed = Object.freeze({ success: false });
+        beforeCommit("CONSUME", clone(failed));
+        return clone(failed);
+      }
+
+      const claimTokenId = validFormat ? tokenIdByDigest.get(tokenDigest) : undefined;
+      const token = claimTokenId === undefined ? undefined : tokenById.get(claimTokenId);
+      let outcome = "INVALID_TOKEN";
+      if (token !== undefined) {
+        if (now >= Date.parse(token.expiresAt)) outcome = "EXPIRED";
+        else if (token.status === "REVOKED") outcome = "REVOKED";
+        else if (token.status === "REPLACED") outcome = "REPLACED";
+        else if (token.status === "CONSUMED") outcome = "ALREADY_CONSUMED";
+        else if (token.status === "ACTIVE") outcome = "CONSUMED";
+      }
+
+      if (outcome === "CONSUMED") {
+        prepared = prepare(Object.freeze({
+          claimTokenId: token.claimTokenId,
+          prescriptionId: token.prescriptionId,
+          ownerDoctorId: token.ownerDoctorId,
+          patientSubjectId,
+          now,
+        }));
+        if (typeof prepared?.commit !== "function" || typeof prepared?.rollback !== "function") {
+          throw new TypeError("Atomic claim completion must provide commit and rollback");
+        }
+      }
+
+      audit({ attemptId, patientSubjectId, claimTokenId: token?.claimTokenId ?? null, outcome, now });
+      if (outcome !== "CONSUMED") {
+        const failed = Object.freeze({ success: false });
+        beforeCommit("CONSUME", clone(failed));
+        return clone(failed);
+      }
+
+      const consumed = persist({ ...clone(token), status: "CONSUMED", consumedAt: new Date(now).toISOString() });
+      const associated = prepared.commit();
+      const completed = Object.freeze({
+        success: true,
+        claimTokenId: consumed.claimTokenId,
+        prescriptionId: consumed.prescriptionId,
+        result: clone(associated),
+      });
+      beforeCommit("CONSUME", clone(completed));
+      return clone(completed);
+    } catch (error) {
+      restore(before);
+      if (prepared !== null) prepared.rollback();
+      throw error;
+    }
+  }
+
   return Object.freeze({
     issue(record) {
       return atomically("ISSUE", () => {
@@ -335,44 +414,22 @@ export function createInMemoryClaimTokenRepository({ beforeCommit = () => {} } =
     },
 
     consume({ tokenDigest, validFormat, patientSubjectId, attemptId, now, rateLimit }) {
-      return atomically("CONSUME", () => {
-        if (failedAttempts(patientSubjectId, now, rateLimit.windowMs) >= rateLimit.maxFailedAttempts) {
-          audit({ attemptId, patientSubjectId, claimTokenId: null, outcome: "RATE_LIMITED", now });
-          return Object.freeze({ success: false });
-        }
-
-        const claimTokenId = validFormat ? tokenIdByDigest.get(tokenDigest) : undefined;
-        const token = claimTokenId === undefined ? undefined : tokenById.get(claimTokenId);
-        let outcome = "INVALID_TOKEN";
-        if (token !== undefined) {
-          if (now >= Date.parse(token.expiresAt)) outcome = "EXPIRED";
-          else if (token.status === "REVOKED") outcome = "REVOKED";
-          else if (token.status === "REPLACED") outcome = "REPLACED";
-          else if (token.status === "CONSUMED") outcome = "ALREADY_CONSUMED";
-          else if (token.status === "ACTIVE") outcome = "CONSUMED";
-        }
-
-        audit({
-          attemptId,
-          patientSubjectId,
-          claimTokenId: token?.claimTokenId ?? null,
-          outcome,
-          now,
-        });
-        if (outcome !== "CONSUMED") return Object.freeze({ success: false });
-
-        const consumed = persist({
-          ...clone(token),
-          status: "CONSUMED",
-          consumedAt: new Date(now).toISOString(),
-        });
-        return Object.freeze({
-          success: true,
-          claimTokenId: consumed.claimTokenId,
-          prescriptionId: consumed.prescriptionId,
-        });
+      const result = consumeAtomically({
+        tokenDigest,
+        validFormat,
+        patientSubjectId,
+        attemptId,
+        now,
+        rateLimit,
+        prepare: () => Object.freeze({ commit: () => null, rollback: () => {} }),
+      });
+      return Object.freeze({
+        success: result.success,
+        ...(result.success ? { claimTokenId: result.claimTokenId, prescriptionId: result.prescriptionId } : {}),
       });
     },
+
+    consumeAtomically,
 
     resolveForConfirmation({ tokenDigest, now }) {
       const claimTokenId = tokenIdByDigest.get(tokenDigest);

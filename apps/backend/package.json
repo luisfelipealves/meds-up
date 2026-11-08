@@ -14,6 +14,7 @@
     "./prescriptions/prescription-confirmation": "./src/prescriptions/prescription-confirmation.mjs",
     "./claims/claim-token-lifecycle": "./src/claims/claim-token-lifecycle.mjs",
     "./claims/masked-identity-confirmation": "./src/claims/masked-identity-confirmation.mjs",
+    "./claims/prescription-association": "./src/claims/prescription-association.mjs",
     "./observability/structured-logger": "./src/observability/structured-logger.mjs"
   },
   "dependencies": {

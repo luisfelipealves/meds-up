@@ -97,7 +97,7 @@ export function createClaimIdentityConfirmationService({
 } = {}) {
   const requireRole = createRoleGuard(assertAuthenticatedSubject);
   const identityRepository = requireRepository(repository);
-  if (typeof claimTokenLifecycle?.resolveForConfirmation !== "function" || typeof claimTokenLifecycle?.consume !== "function") throw new TypeError("A claim-token lifecycle boundary is required");
+  if (typeof claimTokenLifecycle?.resolveForConfirmation !== "function" || typeof claimTokenLifecycle?.consume !== "function" || typeof claimTokenLifecycle?.consumeAtomically !== "function") throw new TypeError("A claim-token lifecycle boundary is required");
   if (typeof createId !== "function") throw new TypeError("A provider-neutral identifier generator is required");
   if (typeof isAllowedIssuerDisplayName !== "function") throw new TypeError("An issuer allow-list is required");
   if (!Number.isSafeInteger(rateLimit?.maxFailedAttempts) || rateLimit.maxFailedAttempts < 1 || !Number.isSafeInteger(rateLimit?.windowMs) || rateLimit.windowMs < 1) throw new TypeError("A bounded rate-limit policy is required");
@@ -189,6 +189,20 @@ export function createClaimIdentityConfirmationService({
       if (pending?.subjectId !== actor.subjectId) throw genericFailure();
       capabilities.delete(capability);
       return claimTokenLifecycle.consume(subject, { rawToken: pending.rawToken });
+    },
+
+    completeConfirmed(subject, capability, prepare) {
+      const actor = patient(subject);
+      const pending = capabilities.get(capability);
+      if (pending?.subjectId !== actor.subjectId || typeof prepare !== "function") throw genericFailure();
+      if (Object.hasOwn(pending, "completedResult")) return clone(pending.completedResult);
+      try {
+        const result = claimTokenLifecycle.consumeAtomically(subject, { rawToken: pending.rawToken }, prepare);
+        capabilities.set(capability, Object.freeze({ subjectId: actor.subjectId, completedResult: clone(result) }));
+        return result;
+      } catch {
+        throw genericFailure();
+      }
     },
 
     inspectAuditForTests() { return identityRepository.inspectForTests(); },
