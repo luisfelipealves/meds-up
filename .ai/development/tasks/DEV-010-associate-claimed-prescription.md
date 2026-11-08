@@ -2,13 +2,15 @@
 id: DEV-010
 type: development
 title: Associate claimed prescription to patient
-status: PLANNED
+status: ASSIGNED
 source: [PD-001, PD-002]
 depends_on: [DEV-003, DEV-008, DEV-009]
 parallel_class: SERIAL
-assigned_agent: null
-branch: null
-worktree: null
+assigned_agent: developer-dev-010
+branch: agent/dev-010-associate-claimed-prescription
+worktree: /home/felipe/projetos/meds-up-worktrees/dev-010-associate-claimed-prescription
+started_at: 2026-11-08T11:45:02Z
+updated_at: 2026-11-08T11:45:02Z
 ---
 
 # Objective
